@@ -12,8 +12,9 @@ git commit -m "alcance: descripcion"
 git push
 ```
 
-Cada push a `main` (o PR) lanza `Build` en `windows-latest`: `fmt --check`,
-`clippy -D warnings`, `test` y `cargo build --release`, y sube el `.exe` como
+Cada push a `main` (o PR) lanza `Build` en `windows-latest`: `fmt --check`
+siempre, `clippy -D warnings` y `test` solo si cambiaron `src/`, `Cargo.toml`
+o `Cargo.lock`, y `cargo build --release` siempre, que sube el `.exe` como
 artifact `gpui-hola-mundo-windows-x86_64` (retencion 7 dias).
 
 ## Descargar el binario

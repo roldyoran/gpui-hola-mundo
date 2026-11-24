@@ -1,7 +1,8 @@
 # AGENTS.md
 
 Maqueta visual de chat (GPUI + gpui-kit). Este PC no compila: todo se verifica
-en el CI (`fmt --check`, `clippy -D warnings`, `test`, build release).
+en el CI (`fmt --check` siempre; `clippy -D warnings` y `test` solo si cambia
+`src/`, `Cargo.toml` o `Cargo.lock`; build release siempre).
 
 ## Donde va cada cosa
 

@@ -22,7 +22,7 @@ assets/
 ├── icons/               # send, paperclip, plus, settings, copy, check (Tabler MIT)
 └── images/              # slava-jamm.jpg de fondo
 docs/                    # architecture, design-system, development
-.github/workflows/build.yml  # fmt + clippy + test + build release + artifact
+.github/workflows/build.yml  # fmt siempre + clippy/test si cambia Rust + build
 ```
 
 Todo el chat es estatico a proposito: los mensajes salen de
@@ -64,7 +64,12 @@ Si SmartScreen avisa: Más información → Ejecutar de todas formas.
 ## Ahorro capa gratuita
 
 - Un solo `windows-latest` (Windows x2 min, macOS x10).
-- `concurrency.cancel-in-progress: true`, `paths-ignore: md`.
-- `Swatinem/rust-cache` con `save-if: main`.
-- `retention-days: 7` en el artifact.
-- Los checks (`fmt`, `clippy`, `test`) corren en el mismo job, sin jobs extra.
+## Ahorrar minutos (el restore del cache es lo caro)
+
+- Sube en lotes: `concurrency.cancel-in-progress: true` cancela el run viejo
+  si haces push dos veces seguidas, no gastas doble.
+- No toques `Cargo.toml`/`Cargo.lock` sin necesidad: cambian la clave del
+  cache y el siguiente build es frio (~10 min) una sola vez.
+- Los pushes que solo tocan docs o assets saltan `clippy`+`test`
+  (deteccion por `git diff` en el workflow) y hacen restore + build.
+- `Swatinem/rust-cache` con `save-if: main` y `retention-days: 7`.
