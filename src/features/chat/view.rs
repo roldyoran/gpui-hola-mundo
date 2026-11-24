@@ -4,9 +4,10 @@
 //! control tiene handler. La composicion replica el patron de pantalla de
 //! gentle-shell (`ui::screen`): fondo atenuado + panel centrado con cabecera.
 
-use super::state::{ChatState, Message, Role};
+use super::{ChatState, Message, Role};
 use crate::shared::ui;
 use gpui_kit::component::label::Label;
+use gpui_kit::gpui_base::StyledExt;
 use gpui_kit::*;
 
 /// Vista raiz del chat.
