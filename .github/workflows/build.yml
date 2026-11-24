@@ -36,6 +36,12 @@ jobs:
           # Solo main guarda cache; los PR reutilizan el de main.
           # Evita expulsar la cache (limite 10 GB por repo).
           save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Check formatting
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Tests
+        run: cargo test
       - name: Build release
         # Sin --locked: el Cargo.lock del repo puede ir desfasado del Cargo.toml
         # (este PC no genera el lock en local) y --locked aborta en ese caso.
