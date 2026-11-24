@@ -37,10 +37,8 @@ jobs:
           # Evita expulsar la cache (limite 10 GB por repo).
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Build release
-        # Sin --locked a proposito: aun no hay Cargo.lock commiteado.
-        # Tras el primer build verde, haz `cargo generate-lockfile` una vez
-        # (o deja que CI lo resuelva) y commitea Cargo.lock, luego re-anade --locked.
-        run: cargo build --release
+        # Cargo.lock esta commiteado: build reproducible.
+        run: cargo build --locked --release
       - name: Upload exe
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
