@@ -46,7 +46,11 @@ impl ChatView {
                     .flex()
                     .flex_col()
                     .flex_1()
-                    .child(Label::new("Chat").font_weight(FontWeight::SEMIBOLD).text_color(ui::fg()))
+                    .child(
+                        Label::new("Chat")
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(ui::fg()),
+                    )
                     .child(
                         Label::new("Maqueta visual · GPUI + Tabler")
                             .text_sm()
