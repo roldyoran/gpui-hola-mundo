@@ -189,6 +189,12 @@ impl ChatView {
     }
 }
 
+impl Default for ChatView {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Render for ChatView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         div()
