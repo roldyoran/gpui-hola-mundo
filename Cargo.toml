@@ -1,0 +1,23 @@
+[package]
+name = "gpui-hola-mundo"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+description = "Hola mundo GPUI centrado — proyecto de testeo mínimo con gpui-kit"
+license = "MIT"
+
+[dependencies]
+# Unica dependencia, en su ultima version estable (0.11.0, 2026-11-23).
+# Incluye GPUI + GPUI Base + componentes + assets por defecto.
+# gpui-kit 0.11.0 fija gpui-pre =0.3.14 (con font-kit en todas las plataformas
+# de escritorio, asi que en Windows no requiere nada extra).
+# En Windows no requiere features ni librerias del sistema.
+gpui-kit = "0.11.0"
+# Necesario para implementar AssetSource (sirve el fondo empaquetado).
+anyhow = "1"
+
+[profile.release]
+# Binario pequeno y arranque rapido para descargar desde Actions.
+# Sin LTO agresivo para no alargar minutos de CI en capa gratuita.
+opt-level = 3
+strip = true

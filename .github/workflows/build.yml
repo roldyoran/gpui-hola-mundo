@@ -1,0 +1,51 @@
+# Build minimo para capa gratuita de GitHub.
+# Solo Windows, sin matrix, sin tests/clippy, con cache y cancelacion.
+# El PC local no compila: solo `git push` y descargar el .exe de Actions.
+
+name: Build
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md"]
+  pull_request:
+    paths-ignore: ["**.md"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          # `stable` = Rust 1.100.0 (12-nov-2026, ultimo estable verificado).
+          # Tu PC tiene 1.99.1: no necesitas actualizar porque no compilas en local.
+          toolchain: stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          # Solo main guarda cache; los PR reutilizan el de main.
+          # Evita expulsar la cache (limite 10 GB por repo).
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Build release
+        # Sin --locked a proposito: aun no hay Cargo.lock commiteado.
+        # Tras el primer build verde, haz `cargo generate-lockfile` una vez
+        # (o deja que CI lo resuelva) y commitea Cargo.lock, luego re-anade --locked.
+        run: cargo build --release
+      - name: Upload exe
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gpui-hola-mundo-windows-x86_64
+          path: target/release/gpui-hola-mundo.exe
+          if-no-files-found: error
+          # Retencion corta para no gastar almacenamiento (500 MB gratis).
+          retention-days: 7
