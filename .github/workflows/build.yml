@@ -37,8 +37,10 @@ jobs:
           # Evita expulsar la cache (limite 10 GB por repo).
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Build release
-        # Cargo.lock esta commiteado: build reproducible.
-        run: cargo build --locked --release
+        # Sin --locked: el Cargo.lock del repo puede ir desfasado del Cargo.toml
+        # (este PC no genera el lock en local) y --locked aborta en ese caso.
+        # El CI resuelve y actualiza el lock en el runner en cada run.
+        run: cargo build --release
       - name: Upload exe
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
