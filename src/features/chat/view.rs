@@ -7,7 +7,6 @@
 use super::{ChatState, Message, Role};
 use crate::shared::ui;
 use gpui_kit::component::label::Label;
-use gpui_kit::gpui_base::StyledExt;
 use gpui_kit::*;
 
 /// Vista raiz del chat.
@@ -47,7 +46,7 @@ impl ChatView {
                     .flex()
                     .flex_col()
                     .flex_1()
-                    .child(Label::new("Chat").font_semibold().text_color(ui::fg()))
+                    .child(Label::new("Chat").font_weight(FontWeight::SEMIBOLD).text_color(ui::fg()))
                     .child(
                         Label::new("Maqueta visual · GPUI + Tabler")
                             .text_sm()
@@ -107,7 +106,7 @@ impl ChatView {
                     .bg(ui::accent())
                     .child(
                         Label::new("G")
-                            .font_semibold()
+                            .font_weight(FontWeight::SEMIBOLD)
                             .text_sm()
                             .text_color(rgb(0xffffff)),
                     ),
