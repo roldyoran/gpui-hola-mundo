@@ -15,6 +15,7 @@ compila en **GitHub Actions (windows-latest)**.
 ```text
 src/
 ├── main.rs              # arranque: assets, fuentes, ventana 1000x700
+├── lib.rs               # biblioteca: expone features y shared
 ├── features/chat/       # mod.rs (API) + state.rs (puro+tests) + view.rs (Render)
 └── shared/              # ui.rs (tokens: card, chip, kbd, header, field) + assets.rs
 assets/

@@ -3,15 +3,11 @@
 //! La regla del repo: `main.rs` no tiene logica ni vistas; registra assets,
 //! fuentes y abre la ventana con `features::chat::ChatView`.
 
-mod features;
-mod shared;
-
 use std::borrow::Cow;
 
+use gpui_hola_mundo::features::chat::ChatView;
+use gpui_hola_mundo::shared::assets::AppAssets;
 use gpui_kit::*;
-use shared::assets::AppAssets;
-
-use features::chat::ChatView;
 
 fn main() {
     application().with_assets(AppAssets).run(|cx| {

@@ -17,6 +17,7 @@ flowchart TD
 | Pieza | Responsabilidad |
 | --- | --- |
 | `src/main.rs` | Arranque: assets, fuentes, ventana. Sin logica ni vistas. |
+| `src/lib.rs` | Biblioteca: expone `features` y `shared`; el binario queda fino y lo `pub` no es codigo muerto. |
 | `src/features/chat` | El chat: `mod.rs` (API publica), `state.rs` (modelo puro), `view.rs` (Render). |
 | `src/shared/ui.rs` | Tokens (`panel, surface, raised, fg, accent…`) y piezas (`card, chip, kbd, screen_header, field`). Sin logica de producto. |
 | `src/shared/assets.rs` | `AssetSource`: sirve fondo e iconos empaquetados, delega el resto al Kit. |
