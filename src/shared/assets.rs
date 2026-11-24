@@ -26,9 +26,7 @@ impl AssetSource for AppAssets {
                 Some(include_bytes!("../../assets/icons/settings.svg").as_slice())
             }
             "icons/copy.svg" => Some(include_bytes!("../../assets/icons/copy.svg").as_slice()),
-            "icons/check.svg" => {
-                Some(include_bytes!("../../assets/icons/check.svg").as_slice())
-            }
+            "icons/check.svg" => Some(include_bytes!("../../assets/icons/check.svg").as_slice()),
             _ => None,
         };
         match bytes {

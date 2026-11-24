@@ -5,7 +5,7 @@
 //! gentle-shell (`ui::screen`): fondo atenuado + panel centrado con cabecera.
 
 use super::state::{ChatState, Message, Role};
-use crate::shared::ui as ui;
+use crate::shared::ui;
 use gpui_kit::component::label::Label;
 use gpui_kit::*;
 
@@ -24,11 +24,7 @@ impl ChatView {
 
     /// Icono Tabler de 16 px en el color dado (`svg` pinta con text color).
     fn ticon(path: &'static str, color: Rgba) -> impl IntoElement {
-        svg()
-            .path(path)
-            .w(px(16.))
-            .h(px(16.))
-            .text_color(color)
+        svg().path(path).w(px(16.)).h(px(16.)).text_color(color)
     }
 
     /// Cabecera del panel: marca, titulo y acciones (visuales).
@@ -134,23 +130,19 @@ impl ChatView {
 
     /// Burbuja del usuario alineada a la derecha.
     fn user_row(&self, text: &str) -> Div {
-        div()
-            .flex()
-            .flex_row()
-            .justify_end()
-            .child(
-                div()
-                    .rounded_xl()
-                    .bg(ui::raised())
-                    .p(px(12.))
-                    .max_w(px(560.))
-                    .child(
-                        Label::new(text.to_string())
-                            .font_family(ui::mono())
-                            .text_sm()
-                            .text_color(ui::fg()),
-                    ),
-            )
+        div().flex().flex_row().justify_end().child(
+            div()
+                .rounded_xl()
+                .bg(ui::raised())
+                .p(px(12.))
+                .max_w(px(560.))
+                .child(
+                    Label::new(text.to_string())
+                        .font_family(ui::mono())
+                        .text_sm()
+                        .text_color(ui::fg()),
+                ),
+        )
     }
 
     /// Composer visual: chips de estado + campo con placeholder y enviar.
