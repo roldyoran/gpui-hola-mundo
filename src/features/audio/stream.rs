@@ -151,7 +151,7 @@ where
                     sum += value * value;
                 }
                 let rms = (sum / data.len() as f64).sqrt();
-                let db = 20.0 * rms.max(1e-7).log10();
+                let db = (20.0 * rms.max(1e-7).log10()) as f32;
                 let frames = data.len() / channels;
 
                 if vad.process(db, frames) {

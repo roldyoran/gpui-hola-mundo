@@ -92,10 +92,10 @@ impl SettingsView {
                     )
                     .child(ui::hint("Overlay transparente · VAD por RMS")),
             )
-            .child(
-                ui::danger_button("Salir")
-                    .on_click(cx.listener(|_, _: &ClickEvent, _, cx| cx.quit())),
-            )
+            .child(ui::danger_button("Salir").on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|_, _: &MouseDownEvent, _, cx| cx.quit()),
+            ))
     }
 
     fn avatar_section(&self, settings: &Settings, cx: &mut Context<Self>) -> Div {
@@ -132,8 +132,9 @@ impl SettingsView {
                     .child(ui::label(slot.title()))
                     .child(div().text_xs().text_color(ui::faint()).child(file)),
             )
-            .child(ui::button("Elegir…").on_click(
-                cx.listener(move |this, _: &ClickEvent, _window, cx| this.pick_png(slot, cx)),
+            .child(ui::button("Elegir…").on_mouse_down(
+                MouseButton::Left,
+                cx.listener(move |this, _: &MouseDownEvent, _window, cx| this.pick_png(slot, cx)),
             ))
     }
 
@@ -203,8 +204,9 @@ impl SettingsView {
                     .gap_3()
                     .child(ui::label("Detección de voz"))
                     .child(
-                        ui::button(if enabled { "Activada" } else { "Desactivada" }).on_click(
-                            cx.listener(|this, _: &ClickEvent, _, cx| {
+                        ui::button(if enabled { "Activada" } else { "Desactivada" }).on_mouse_down(
+                            MouseButton::Left,
+                            cx.listener(|this, _: &MouseDownEvent, _, cx| {
                                 let next = !this.state.read(cx).settings.audio.enabled;
                                 this.update_state(cx, move |state| {
                                     state.set_audio_enabled(next);
@@ -215,36 +217,36 @@ impl SettingsView {
             )
             .child(device_list);
 
-        card =
-            card.child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .justify_between()
-                    .gap_3()
-                    .child(
-                        div()
-                            .flex()
-                            .flex_row()
-                            .items_center()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .px(px(8.))
-                                    .py(px(2.))
-                                    .rounded_md()
-                                    .bg(mouth_bg)
-                                    .text_xs()
-                                    .text_color(mouth_color)
-                                    .child(if mouth_open { "HABLANDO" } else { "SILENCIO" }),
-                            )
-                            .child(div().text_xs().text_color(status_color).child(status_text)),
-                    )
-                    .child(ui::button("Actualizar").on_click(
-                        cx.listener(|this, _: &ClickEvent, _, cx| this.refresh_devices(cx)),
-                    )),
-            );
+        card = card.child(
+            div()
+                .flex()
+                .flex_row()
+                .items_center()
+                .justify_between()
+                .gap_3()
+                .child(
+                    div()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .gap_2()
+                        .child(
+                            div()
+                                .px(px(8.))
+                                .py(px(2.))
+                                .rounded_md()
+                                .bg(mouth_bg)
+                                .text_xs()
+                                .text_color(mouth_color)
+                                .child(if mouth_open { "HABLANDO" } else { "SILENCIO" }),
+                        )
+                        .child(div().text_xs().text_color(status_color).child(status_text)),
+                )
+                .child(ui::button("Actualizar").on_mouse_down(
+                    MouseButton::Left,
+                    cx.listener(|this, _: &MouseDownEvent, _, cx| this.refresh_devices(cx)),
+                )),
+        );
 
         if let Some(message) = error.or(devices_error) {
             card = card.child(
@@ -281,10 +283,13 @@ impl SettingsView {
             } else {
                 ""
             }))
-            .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
-                let id = id.clone();
-                this.update_state(cx, move |state| state.set_device(id.clone()));
-            }))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(move |this, _: &MouseDownEvent, _, cx| {
+                    let id = id.clone();
+                    this.update_state(cx, move |state| state.set_device(id.clone()));
+                }),
+            )
     }
 
     fn sensitivity_section(&self, settings: &Settings, cx: &mut Context<Self>) -> Div {
@@ -300,13 +305,14 @@ impl SettingsView {
                     .flex_row()
                     .items_center()
                     .gap_3()
-                    .child(ui::button("−").on_click(cx.listener(
-                        move |this, _: &ClickEvent, _, cx| {
+                    .child(ui::button("−").on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(move |this, _: &MouseDownEvent, _, cx| {
                             this.update_state(cx, move |state| {
                                 state.set_sensitivity(lower);
                             });
-                        },
-                    )))
+                        }),
+                    ))
                     .child(
                         div()
                             .flex_1()
@@ -314,13 +320,14 @@ impl SettingsView {
                             .text_color(ui::fg())
                             .child(format!("{value} / 100")),
                     )
-                    .child(ui::button("+").on_click(cx.listener(
-                        move |this, _: &ClickEvent, _, cx| {
+                    .child(ui::button("+").on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(move |this, _: &MouseDownEvent, _, cx| {
                             this.update_state(cx, move |state| {
                                 state.set_sensitivity(higher);
                             });
-                        },
-                    ))),
+                        }),
+                    )),
             )
             .child(
                 div()
@@ -357,18 +364,24 @@ impl SettingsView {
                             .flex_row()
                             .items_center()
                             .gap_2()
-                            .child(ui::button("−").on_click(cx.listener(
-                                move |this, _: &ClickEvent, _, cx| this.apply_height(shorter, cx),
-                            )))
+                            .child(ui::button("−").on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(move |this, _: &MouseDownEvent, _, cx| {
+                                    this.apply_height(shorter, cx)
+                                }),
+                            ))
                             .child(
                                 div()
                                     .text_sm()
                                     .text_color(ui::fg())
                                     .child(format!("{} px", height.round() as i32)),
                             )
-                            .child(ui::button("+").on_click(cx.listener(
-                                move |this, _: &ClickEvent, _, cx| this.apply_height(taller, cx),
-                            ))),
+                            .child(ui::button("+").on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(move |this, _: &MouseDownEvent, _, cx| {
+                                    this.apply_height(taller, cx)
+                                }),
+                            )),
                     ),
             )
             .child(
@@ -380,8 +393,9 @@ impl SettingsView {
                     .gap_3()
                     .child(ui::label("Siempre visible"))
                     .child(
-                        ui::button(if topmost { "Activado" } else { "Desactivado" }).on_click(
-                            cx.listener(|this, _: &ClickEvent, _, cx| {
+                        ui::button(if topmost { "Activado" } else { "Desactivado" }).on_mouse_down(
+                            MouseButton::Left,
+                            cx.listener(|this, _: &MouseDownEvent, _, cx| {
                                 let next = !this.state.read(cx).settings.window.always_on_top;
                                 this.update_state(cx, move |state| {
                                     state.set_always_on_top(next);

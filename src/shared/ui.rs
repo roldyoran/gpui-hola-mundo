@@ -145,7 +145,7 @@ pub fn danger_button(text: impl Into<SharedString>) -> Div {
 }
 
 /// Fila seleccionable de una lista (micrófonos).
-pub fn list_row(selected: bool) -> Div {
+pub fn list_row(is_selected: bool) -> Div {
     div()
         .flex()
         .flex_row()
@@ -154,9 +154,9 @@ pub fn list_row(selected: bool) -> Div {
         .h(px(30.))
         .px(px(10.))
         .rounded_lg()
-        .bg(if selected { selected() } else { well() })
+        .bg(if is_selected { selected() } else { well() })
         .border_1()
-        .border_color(if selected { accent() } else { border() })
+        .border_color(if is_selected { accent() } else { border() })
 }
 
 /// Pista visual de una escala 0–100.
