@@ -101,12 +101,13 @@ pub fn open_settings(state: Entity<AppState>, cx: &mut App) -> anyhow::Result<()
 /// Mientras no se llame a esta función no existe ninguna ventana transparente:
 /// el primer arranque solo enseña la previsualización de ajustes.
 pub fn show_avatar_overlay(state: &Entity<AppState>, cx: &mut App) {
-    let (existing, settings, topmost) = {
+    let (existing, settings, topmost, ready) = {
         let state = state.read(cx);
         (
             state.avatar_window,
             state.settings.clone(),
             state.settings.window.always_on_top,
+            state.avatar_closed.is_some() || state.avatar_open.is_some(),
         )
     };
 
@@ -116,6 +117,9 @@ pub fn show_avatar_overlay(state: &Entity<AppState>, cx: &mut App) {
             state.avatar_parked = false;
             cx.notify();
         });
+        return;
+    }
+    if !ready {
         return;
     }
 

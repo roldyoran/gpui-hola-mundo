@@ -11,8 +11,8 @@ sigue a `gentle-shell-gpui`. Todo sale de `src/shared/ui.rs`.
 | `window_bg` | `#09090b` | fondo de la ventana (`--background`) |
 | `card_bg` | `#0c0c0e` | tarjetas y fondos de botón secundario |
 | `muted_bg` | `#18181b` | filas, pozos, controles segmentados |
-| `checker_dark` | `#101012` | casilla oscura del tablero de la preview |
-| `checker_light` | `#18181b` | casilla clara del tablero de la preview |
+| `checker_dark` | `#0d0d0f` | casilla oscura del tablero de la preview |
+| `checker_light` | `#1c1c20` | casilla clara del tablero de la preview |
 | `hover_bg` | `#27272a` | hover de filas y botones |
 | `active_bg` | `#3f3f46` | control pulsado |
 | `border` | `#27272a` | bordes de tarjetas y controles |
@@ -40,7 +40,8 @@ sigue a `gentle-shell-gpui`. Todo sale de `src/shared/ui.rs`.
   12 px mayúsculas.
 - `button()`: secundario (fondo oscuro + borde). `primary_button()`: claro
   sobre oscuro. `ghost_button()`: acciones discretas. `destructive_button()`:
-  salir. `icon_button()`: cuadrado de 32 px.
+  salir. `disabled_button()`: requisito pendiente, sin hover. `icon_button()`:
+  cuadrado de 32 px.
 - `switch(on)`: 36×20, knob de 16, animación de estado con color.
 - `list_row(selected)`: fila de micrófono con `radio()` y hover.
 - `segmented()` / `segment()`: presets de sensibilidad.
@@ -51,7 +52,7 @@ sigue a `gentle-shell-gpui`. Todo sale de `src/shared/ui.rs`.
   que el fondo del overlay es transparente.
 - Panel de preview: card de 300 px con cabecera, tablero de 248 px, estado
   `HABLANDO`/`SILENCIO` y las acciones **Mostrar**, **Ocultar** y **Pantalla
-  completa**.
+  completa**. **Mostrar** queda inactivo hasta que haya al menos un PNG.
 
 ## Reglas
 

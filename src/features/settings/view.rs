@@ -206,6 +206,7 @@ impl SettingsView {
                 state.avatar_open.clone(),
             )
         };
+        let ready = closed.is_some() || open.is_some();
         let image = if mouth_open { open } else { closed };
         let (state_text, state_color) = match &status {
             AudioStatus::Running(_) if mouth_open => ("HABLANDO", ui::success()),
@@ -244,13 +245,15 @@ impl SettingsView {
                     .flex_col()
                     .items_center()
                     .gap_2()
-                    .px(px(8.))
+                    .w_full()
                     .child(ui::section_label("sin PNG"))
                     .child(
                         div()
+                            .w_full()
                             .text_xs()
+                            .text_center()
                             .text_color(ui::faint())
-                            .child("Elegí boca cerrada y boca abierta en la sección Avatar."),
+                            .child("Elegí los dos PNG en la sección Avatar."),
                     ),
             );
         }
@@ -302,7 +305,7 @@ impl SettingsView {
                     }),
                 ),
             );
-        } else {
+        } else if ready {
             actions = actions.child(
                 ui::primary_button("preview-show", "Mostrar overlay")
                     .w_full()
@@ -313,6 +316,10 @@ impl SettingsView {
                         }),
                     ),
             );
+        } else {
+            actions = actions
+                .child(ui::disabled_button("preview-show", "Mostrar overlay").w_full())
+                .child(ui::hint("Elegí al menos un PNG para habilitarlo."));
         }
 
         let status_hint = if !overlay_exists {

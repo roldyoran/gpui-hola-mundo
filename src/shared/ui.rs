@@ -27,12 +27,12 @@ pub fn muted_bg() -> Rgba {
 
 /// Casilla oscura del tablero de transparencia de la preview.
 pub fn checker_dark() -> Rgba {
-    rgba(0x101012ff)
+    rgba(0x0d0d0fff)
 }
 
 /// Casilla clara del tablero de transparencia de la preview.
 pub fn checker_light() -> Rgba {
-    rgba(0x18181bff)
+    rgba(0x1c1c20ff)
 }
 
 /// `--accent`: hover de filas y botones fantasma.
@@ -315,6 +315,15 @@ pub fn destructive_button(
                 .bg(destructive_active())
                 .border_color(destructive_active())
         })
+}
+
+/// Botón inactivo mientras falta un requisito (por ejemplo, un PNG).
+pub fn disabled_button(id: impl Into<ElementId>, text: impl Into<SharedString>) -> Stateful<Div> {
+    button_base(id, text)
+        .bg(muted_bg())
+        .border_color(border())
+        .text_color(faint())
+        .cursor_not_allowed()
 }
 
 /// Switch de 36×20 con knob de 16.

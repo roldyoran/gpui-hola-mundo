@@ -44,8 +44,8 @@ escritorio.
 3. En **Nivel de audio**, habla y observa el medidor: la línea ámbar es el
    umbral. Ajusta **Sensibilidad** hasta que la etiqueta cambie entre
    `SILENCIO` y `HABLANDO` con tu voz normal, sin abrirse con ruido de fondo.
-4. Pulsa **Mostrar overlay**. Ahí nace la ventana transparente real, en la
-   posición y el tamaño guardados.
+4. Pulsa **Mostrar overlay** (se habilita al importar al menos un PNG). Ahí
+   nace la ventana transparente real, en la posición y el tamaño guardados.
 
 Los cambios se guardan solos en `%APPDATA%\pngtuber-lite\settings.json`, junto
 a una copia de los PNG en `avatars\`.
