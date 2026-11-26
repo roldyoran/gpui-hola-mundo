@@ -1,6 +1,6 @@
 # Primer arranque: preview lateral y overlay bajo demanda
 
-- **Estado:** `implementing` · Verificación **solo por GitHub Actions**
+- **Estado:** `checking` · CI en verde (run `45739531808`) · Falta prueba humana de resize y de restaurar posición
 - **Fecha:** 2026-11-26
 - **Origen:** prueba humana con una persona ajena al proyecto
 - **Fase anterior:** [`2026-11-26-settings-sin-cerrar.md`](2026-11-26-settings-sin-cerrar.md)
@@ -55,19 +55,36 @@ avatar; el overlay real no existe hasta pulsar **Mostrar**. Además:
 
 ## Criterios de aceptación
 
-- [ ] Al arrancar no existe ninguna ventana transparente.
-- [ ] Ajustes muestra el panel de preview con el PNG actual y el estado de
+- [x] Al arrancar no existe ninguna ventana transparente.
+- [x] Ajustes muestra el panel de preview con el PNG actual y el estado de
       boca.
-- [ ] **Mostrar** crea el overlay real; antes de pulsarlo no hay overlay.
+- [x] **Mostrar** crea el overlay real; antes de pulsarlo no hay overlay.
 - [ ] **Ocultar** sigue aparcando el avatar fuera de pantalla y **Mostrar** lo
       devuelve exactamente a la posición donde estaba (o lo crea ahí).
-- [ ] El overlay no tiene botón ni acción de pantalla completa.
-- [ ] `Ctrl+Alt+P` ya no existe.
+- [x] El overlay no tiene botón ni acción de pantalla completa.
+- [x] `Ctrl+Alt+P` ya no existe.
 - [ ] Arrastrar lados y esquinas cambia el tamaño; se guarda al soltar.
-- [ ] La rueda desplaza el cuerpo de ajustes hasta la última sección.
-- [ ] Ajustes se redimensiona, se maximiza y no se cierra.
-- [ ] `fmt`, `clippy -D warnings`, tests y release pasan en Actions.
+- [x] La rueda desplaza el cuerpo de ajustes hasta la última sección.
+- [x] Ajustes se redimensiona, se maximiza y no se cierra.
+- [x] `fmt`, `clippy -D warnings`, tests y release pasan en Actions.
 
 ## Evidencia
 
-- Pendiente del run de Actions.
+- CI en verde en el run [`45739531808`](https://github.com/roldyoran/gpui-hola-mundo/actions/runs/45739531808):
+  `fmt`, `clippy --all-targets -- -D warnings`, tests y release. Artefacto
+  `pngtuber-lite-windows-x86_64` (11.685.376 B = 11,1 MiB).
+- Prueba Win32 sobre el `.exe` del CI, con `%APPDATA%` aislado y dos PNG de
+  prueba:
+  - Arranque: **una sola** ventana visible (ajustes, 1076×759) y ninguna
+    ventana de 320×320. El overlay no existe.
+  - Preview: se ve el PNG con el tablero de transparencia y el chip de estado;
+    no aparece ningún botón de pantalla completa.
+  - **Mostrar overlay** con clic real: crea una ventana de 336×328 en
+    `(92, 96)`, que corresponde a 320×320 en `(100, 100)` guardados más el
+    marco invisible. La preview cambia a **Ocultar**/**Mostrar**.
+  - Rueda sobre la columna izquierda: la captura cambia en 5360 muestras
+    (paso de 4 px), es decir, el cuerpo sí se desplaza hasta **Ventana**.
+  - `WM_CLOSE` sobre ajustes no cierra la ventana (comportamiento heredado de
+    la fase anterior, sin cambios en este código).
+- Pendiente de prueba humana: arrastrar bordes y confirmar que **Ocultar** →
+  **Mostrar** devuelve el avatar al mismo píxel.

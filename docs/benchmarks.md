@@ -63,3 +63,4 @@ Sin número no hay optimización.
 | 2026-11-26 | CI `d2e13c4` | overlay 320×320 + ajustes abiertos, sin PNG | 51,2 MB | 30,7 MB | pendiente | pendiente | 17 hilos; binario 11.433.984 B (10,9 MiB); `WaitForInputIdle` falló, arranque no medido; lo prueba el humano |
 | 2026-11-26 | CI `6563b38` | UI shadcn + medidor de nivel + modo OBS | — | — | — | — | binario 11.640.320 B (11,1 MiB); arranque aislado correcto; medición de RAM/CPU pendiente |
 | 2026-11-26 | CI `ae791b3` | ajustes sin cierre + minimizar/maximizar | — | — | — | — | binario 11.643.392 B (11,1 MiB); `WM_CLOSE` bloqueado y `SC_CLOSE` ausente verificados por Win32 |
+| 2026-11-26 | CI `ff8d90c` | arranque solo ajustes + preview con 2 PNG (audio off) | 53,1 MB | 38,7 MB | — | — | 17 hilos; binario 11.685.376 B (11,1 MiB); scroll verificado; **Mostrar** crea el overlay 320×320 en la posición guardada; sin pantalla completa |
