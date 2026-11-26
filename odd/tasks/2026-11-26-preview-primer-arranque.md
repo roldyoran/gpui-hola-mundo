@@ -1,6 +1,6 @@
 # Primer arranque: preview lateral y overlay bajo demanda
 
-- **Estado:** `checking` · CI en verde (run `45739531808`) · Falta prueba humana de resize y de restaurar posición
+- **Estado:** `checking` · CI en verde (run `45740820917`) · Falta prueba humana de resize, posición y orden Z
 - **Fecha:** 2026-11-26
 - **Origen:** prueba humana con una persona ajena al proyecto
 - **Fase anterior:** [`2026-11-26-settings-sin-cerrar.md`](2026-11-26-settings-sin-cerrar.md)
@@ -73,14 +73,16 @@ avatar; el overlay real no existe hasta pulsar **Mostrar**. Además:
 - [ ] Arrastrar lados y esquinas cambia el tamaño; se guarda al soltar.
 - [x] La rueda desplaza el cuerpo de ajustes hasta la última sección.
 - [x] Ajustes se redimensiona, se maximiza y no se cierra.
-- [ ] El `.exe` de release no abre ninguna ventana de consola.
+- [x] El `.exe` de release no abre ninguna ventana de consola.
 - [x] `fmt`, `clippy -D warnings`, tests y release pasan en Actions.
 
 ## Evidencia
 
-- CI en verde en el run [`45739531808`](https://github.com/roldyoran/gpui-hola-mundo/actions/runs/45739531808):
+- CI en verde en el run [`45740820917`](https://github.com/roldyoran/gpui-hola-mundo/actions/runs/45740820917):
   `fmt`, `clippy --all-targets -- -D warnings`, tests y release. Artefacto
   `pngtuber-lite-windows-x86_64` (11.685.376 B = 11,1 MiB).
+- Cabecera PE del `.exe` del run: `SUBSYSTEM = 2` (`WINDOWS_GUI`), no `3`
+  (`CONSOLE`). Es un build `--release` de subsistema Windows: no abre consola.
 - Prueba Win32 sobre el `.exe` del CI, con `%APPDATA%` aislado y dos PNG de
   prueba:
   - Arranque: **una sola** ventana visible (ajustes, 1076×759) y ninguna
@@ -94,5 +96,10 @@ avatar; el overlay real no existe hasta pulsar **Mostrar**. Además:
     (paso de 4 px), es decir, el cuerpo sí se desplaza hasta **Ventana**.
   - `WM_CLOSE` sobre ajustes no cierra la ventana (comportamiento heredado de
     la fase anterior, sin cambios en este código).
-- Pendiente de prueba humana: arrastrar bordes y confirmar que **Ocultar** →
-  **Mostrar** devuelve el avatar al mismo píxel.
+- **Mostrar al frente:** `win32::raise` se llama al crear y al desaparcar el
+  overlay. Usa `HWND_TOP` y `SWP_NOACTIVATE`, así queda encima de ajustes sin
+  quitarle el foco. Pendiente de confirmación humana con `Siempre visible`
+  desactivado.
+- Pendiente de prueba humana: arrastrar bordes, confirmar que **Ocultar** →
+  **Mostrar** devuelve el avatar al mismo píxel y que queda por encima de la
+  ventana de ajustes.
