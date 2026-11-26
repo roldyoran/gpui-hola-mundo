@@ -31,6 +31,18 @@ enum SizeAxis {
     Height,
 }
 
+/// Datos de un stepper de tamaño independiente.
+struct SizeSpec {
+    title: &'static str,
+    description: &'static str,
+    value: f32,
+    down_id: &'static str,
+    up_id: &'static str,
+    down: f32,
+    up: f32,
+    axis: SizeAxis,
+}
+
 pub struct SettingsView {
     state: Entity<AppState>,
     body_scroll: ScrollHandle,
@@ -612,17 +624,17 @@ impl SettingsView {
         )
     }
 
-    fn size_stepper(
-        title: &'static str,
-        description: &'static str,
-        value: f32,
-        down_id: &'static str,
-        up_id: &'static str,
-        down: f32,
-        up: f32,
-        axis: SizeAxis,
-        cx: &mut Context<Self>,
-    ) -> Div {
+    fn size_stepper(spec: SizeSpec, cx: &mut Context<Self>) -> Div {
+        let SizeSpec {
+            title,
+            description,
+            value,
+            down_id,
+            up_id,
+            down,
+            up,
+            axis,
+        } = spec;
         div()
             .flex()
             .flex_row()
@@ -674,26 +686,30 @@ impl SettingsView {
             ui::card().child(
                 ui::card_body()
                     .child(Self::size_stepper(
-                        "Ancho",
-                        "Píxeles lógicos; el PNG se adapta.",
-                        width,
-                        "width-down",
-                        "width-up",
-                        narrower,
-                        wider,
-                        SizeAxis::Width,
+                        SizeSpec {
+                            title: "Ancho",
+                            description: "Píxeles lógicos; el PNG se adapta.",
+                            value: width,
+                            down_id: "width-down",
+                            up_id: "width-up",
+                            down: narrower,
+                            up: wider,
+                            axis: SizeAxis::Width,
+                        },
                         cx,
                     ))
                     .child(ui::divider())
                     .child(Self::size_stepper(
-                        "Alto",
-                        "Píxeles lógicos; el PNG se adapta.",
-                        height,
-                        "height-down",
-                        "height-up",
-                        shorter,
-                        taller,
-                        SizeAxis::Height,
+                        SizeSpec {
+                            title: "Alto",
+                            description: "Píxeles lógicos; el PNG se adapta.",
+                            value: height,
+                            down_id: "height-down",
+                            up_id: "height-up",
+                            down: shorter,
+                            up: taller,
+                            axis: SizeAxis::Height,
+                        },
                         cx,
                     ))
                     .child(ui::divider())
