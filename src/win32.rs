@@ -36,8 +36,9 @@ mod imp {
         GetAsyncKeyState, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT, RegisterHotKey, VK_LBUTTON, VK_P,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
-        GetCursorPos, GetMessageW, GetSystemMetrics, GetWindowRect, HWND_NOTOPMOST, HWND_TOPMOST,
-        MSG, SM_CXVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SWP_NOACTIVATE, SWP_NOMOVE,
+        DeleteMenu, DrawMenuBar, GetCursorPos, GetMessageW, GetSystemMenu, GetSystemMetrics,
+        GetWindowRect, HWND_NOTOPMOST, HWND_TOPMOST, MF_BYCOMMAND, MSG, SC_CLOSE,
+        SM_CXVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SWP_NOACTIVATE, SWP_NOMOVE,
         SWP_NOSIZE, SWP_NOZORDER, SetWindowPos, WM_HOTKEY,
     };
 
@@ -264,6 +265,23 @@ mod imp {
         }
     }
 
+    /// Quita `Cerrar` del menú del sistema para que la X nativa quede inactiva.
+    pub fn disable_close(window: &Window) {
+        let Some(hwnd) = hwnd(window) else {
+            return;
+        };
+        // SAFETY: `hwnd` es válido y el menú pertenece a esa ventana. Borrar
+        // `SC_CLOSE` solo deshabilita el comando de cierre; no libera nada.
+        unsafe {
+            let menu = GetSystemMenu(hwnd, false);
+            if menu.0.is_null() {
+                return;
+            }
+            let _ = DeleteMenu(menu, SC_CLOSE, MF_BYCOMMAND);
+            let _ = DrawMenuBar(hwnd);
+        }
+    }
+
     fn toggle_park() {
         let raw = AVATAR.load(Ordering::Relaxed);
         if raw == 0 {
@@ -316,7 +334,7 @@ mod imp {
 }
 
 #[cfg(windows)]
-pub use imp::{begin_drag, drag_step, install_hotkey, park, set_topmost, show};
+pub use imp::{begin_drag, disable_close, drag_step, install_hotkey, park, set_topmost, show};
 
 #[cfg(not(windows))]
 pub fn begin_drag(
@@ -345,3 +363,6 @@ pub fn show(_window: &gpui_kit::Window) {}
 
 #[cfg(not(windows))]
 pub fn install_hotkey(_window: &gpui_kit::Window) {}
+
+#[cfg(not(windows))]
+pub fn disable_close(_window: &gpui_kit::Window) {}

@@ -28,7 +28,7 @@ flowchart TD
 | `src/main.rs` | `application().run`, rutas, ajustes, ventana del avatar, primer arranque | lógica de producto |
 | `src/app.rs` | `AppState`: ajustes, boca, estado de audio, handles; bomba canal → `notify` | dibujar ni decidir VAD |
 | `src/window.rs` | `WindowOptions` de overlay/ajustes, abrir ajustes, redimensionar, aparcar/mostrar | controles |
-| `src/win32.rs` | arrastre manual con `SetWindowPos`, topmost, aparcado fuera de pantalla y atajo `Ctrl+Alt+P` | reglas de negocio |
+| `src/win32.rs` | arrastre manual con `SetWindowPos`, topmost, aparcado fuera de pantalla, atajo `Ctrl+Alt+P` y `SC_CLOSE` deshabilitado | reglas de negocio |
 | `features/avatar` | validar/copiar PNG, decodificar una vez, render del overlay | conocer el audio |
 | `features/audio` | enumerar dispositivos, hilo dueño, stream cpal, VAD, eventos | tocar GPUI |
 | `features/settings` | esquema v1, rutas de datos, escritura atómica, UI | dibujar el avatar |
@@ -66,6 +66,9 @@ Stream WASAPI (cpal) ── callback: RMS → VAD → try_send solo al cambiar
   cursor cada 16 ms y mueve el `HWND` con `SetWindowPos`. El hilo del atajo
   global solo atiende `WM_HOTKEY` y mueve el mismo `HWND` fuera/dentro del
   escritorio virtual.
+- La ventana de ajustes no se cierra: `on_window_should_close` devuelve
+  `false` y `SC_CLOSE` se elimina del menú del sistema. El botón **Salir de la
+  app** es la única salida; minimizar/maximizar siguen siendo nativos.
 
 ## Flujo de datos
 

@@ -48,7 +48,8 @@ a una copia de los PNG en `avatars\`.
 
 - **Arrastrar:** botón izquierdo sobre el avatar.
 - **Abrir ajustes:** clic derecho sobre el avatar.
-- **Cerrar ajustes:** la X de la cabecera; el avatar sigue funcionando.
+- **Ajustes:** la ventana no se puede cerrar; usa **Minimizar** o
+  **Maximizar** de Windows. Sigue en la barra de tareas.
 - **Ocultar de la pantalla sin cerrar:** en **Ventana**, botón **Ocultar**.
   El avatar se aparca fuera de los monitores y **sigue renderizando para OBS**.
   **Mostrar** lo devuelve a su última posición.

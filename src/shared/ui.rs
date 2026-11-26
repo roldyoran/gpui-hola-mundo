@@ -157,7 +157,7 @@ pub fn row() -> Div {
         .rounded_md()
 }
 
-/// Cabecera de la ventana: marca, título, subtítulo y acción.
+/// Cabecera de la ventana: marca, título y subtítulo.
 pub fn screen_header() -> Div {
     div()
         .flex()

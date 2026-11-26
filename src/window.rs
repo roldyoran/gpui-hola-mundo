@@ -35,12 +35,14 @@ pub fn avatar_options(bounds: Bounds<Pixels>) -> WindowOptions {
     }
 }
 
-/// Ventana de ajustes: normal y de tamaño fijo.
+/// Ventana de ajustes: normal, redimensionable y sin cierre.
 pub fn settings_options(bounds: Bounds<Pixels>) -> WindowOptions {
     WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(bounds)),
         kind: WindowKind::Normal,
-        is_resizable: false,
+        is_resizable: true,
+        is_minimizable: true,
+        window_min_size: Some(size(px(520.), px(520.))),
         ..Default::default()
     }
 }
@@ -63,6 +65,13 @@ pub fn open_settings(state: Entity<AppState>, cx: &mut App) -> anyhow::Result<()
         cx.new(|cx| SettingsView::new(view_state, cx))
     })?;
     let handle: AnyWindowHandle = handle.into();
+    // La ventana de ajustes no se cierra: solo se minimiza, se maximiza o se
+    // sale desde el botón destructivo. `Alt+F4`, la X nativa y el menú del
+    // sistema pasan por aquí.
+    let _ = handle.update(cx, |_, window, cx| {
+        window.on_window_should_close(cx, |_, _| false);
+        crate::win32::disable_close(window);
+    });
     state.update(cx, |state, _| state.settings_window = Some(handle));
     Ok(())
 }

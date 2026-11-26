@@ -153,47 +153,42 @@ impl SettingsView {
         }
     }
 
-    fn header(&self, cx: &mut Context<Self>) -> Div {
-        ui::screen_header()
-            .child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .gap_3()
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .w(px(32.))
-                            .h(px(32.))
-                            .rounded_md()
-                            .bg(ui::primary())
-                            .text_sm()
-                            .font_weight(FontWeight::BOLD)
-                            .text_color(ui::primary_fg())
-                            .child("P"),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap_1()
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .text_color(ui::fg())
-                                    .child("PNGTuber Lite"),
-                            )
-                            .child(ui::hint("Overlay transparente · detección por RMS")),
-                    ),
-            )
-            .child(ui::icon_button("close-settings", "×").on_mouse_down(
-                MouseButton::Left,
-                cx.listener(|_, _: &MouseDownEvent, window, _| window.remove_window()),
-            ))
+    fn header(&self) -> Div {
+        ui::screen_header().child(
+            div()
+                .flex()
+                .flex_row()
+                .items_center()
+                .gap_3()
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .w(px(32.))
+                        .h(px(32.))
+                        .rounded_md()
+                        .bg(ui::primary())
+                        .text_sm()
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(ui::primary_fg())
+                        .child("P"),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_1()
+                        .child(
+                            div()
+                                .text_sm()
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .text_color(ui::fg())
+                                .child("PNGTuber Lite"),
+                        )
+                        .child(ui::hint("Overlay transparente · detección por RMS")),
+                ),
+        )
     }
 
     fn avatar_section(&self, settings: &Settings, cx: &mut Context<Self>) -> Div {
@@ -800,7 +795,9 @@ impl SettingsView {
                     .items_center()
                     .justify_between()
                     .gap_4()
-                    .child(ui::hint("Los cambios se guardan automáticamente."))
+                    .child(ui::hint(
+                        "Se guarda solo. Minimiza la ventana; no se puede cerrar.",
+                    ))
                     .child(
                         ui::destructive_button("quit-app", "Salir de la app").on_mouse_down(
                             MouseButton::Left,
@@ -853,7 +850,7 @@ impl Render for SettingsView {
             .flex_col()
             .bg(ui::window_bg())
             .text_color(ui::fg())
-            .child(self.header(cx))
+            .child(self.header())
             .child(
                 div()
                     .id("settings-body")
@@ -862,22 +859,25 @@ impl Render for SettingsView {
                     .overflow_y_scroll()
                     .track_scroll(&self.body_scroll)
                     .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap_6()
-                            .p(px(24.))
-                            .child(self.avatar_section(&settings, cx))
-                            .child(Self::audio_section(
-                                &settings,
-                                &devices,
-                                devices_error.as_deref(),
-                                &status,
-                                audio_error.as_deref(),
-                                cx,
-                            ))
-                            .child(self.audio_level_section(&settings, &status, mouth_open, cx))
-                            .child(self.window_section(&settings, cx)),
+                        div().flex().flex_col().items_center().p(px(24.)).child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .gap_6()
+                                .w_full()
+                                .max_w(px(760.))
+                                .child(self.avatar_section(&settings, cx))
+                                .child(Self::audio_section(
+                                    &settings,
+                                    &devices,
+                                    devices_error.as_deref(),
+                                    &status,
+                                    audio_error.as_deref(),
+                                    cx,
+                                ))
+                                .child(self.audio_level_section(&settings, &status, mouth_open, cx))
+                                .child(self.window_section(&settings, cx)),
+                        ),
                     ),
             )
             .child(self.footer(storage_error.as_deref(), cx))

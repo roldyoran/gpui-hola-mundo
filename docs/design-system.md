@@ -31,8 +31,8 @@ sigue a `gentle-shell-gpui`. Todo sale de `src/shared/ui.rs`.
   debajo con `gap_3`.
 - `card()`: superficie `card_bg`, borde `1px`, radio `lg`, `overflow_hidden`.
   Las filas ponen su padding; `card_body()` añade `p(16)` y `gap_4`.
-- `screen_header()`: 64 px, marca/título/subtítulo y acción ghost, borde
-  inferior.
+- `screen_header()`: 64 px, marca/título/subtítulo, borde inferior. Sin acción
+  de cierre: la ventana de ajustes solo se minimiza o maximiza.
 - `row()`: 52 px, padding horizontal 12, radio `md`.
 - `label()` / `hint()` / `section_label()`: 14 px principal, 12 px tenue,
   12 px mayúsculas.
@@ -63,5 +63,8 @@ sigue a `gentle-shell-gpui`. Todo sale de `src/shared/ui.rs`.
    transparencia.
 8. La ventana de ajustes tiene cabecera y pie fijos; el cuerpo es el único
    `overflow_y_scroll`. Ninguna sección puede quedar cortada.
+9. La ventana de ajustes no se cierra: `on_window_should_close` devuelve
+   `false` y `SC_CLOSE` desaparece del menú del sistema. La única salida es
+   **Salir de la app**.
 9. No hay animaciones de entrada. El medidor es el único movimiento y solo
    corre mientras la ventana de ajustes existe.
