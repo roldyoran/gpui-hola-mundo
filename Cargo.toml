@@ -1,23 +1,43 @@
 [package]
-name = "gpui-hola-mundo"
+name = "pngtuber-lite"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.99"
-description = "Hola mundo GPUI centrado — proyecto de testeo mínimo con gpui-kit"
+description = "PNGTuber ultraligero: overlay transparente y VAD por RMS con GPUI"
 license = "MIT"
 
 [dependencies]
-# Unica dependencia, en su ultima version estable (0.11.0, 2026-11-23).
-# Incluye GPUI + GPUI Base + componentes + assets por defecto.
-# gpui-kit 0.11.0 fija gpui-pre =0.3.14 (con font-kit en todas las plataformas
-# de escritorio, asi que en Windows no requiere nada extra).
-# En Windows no requiere features ni librerias del sistema.
-gpui-kit = "0.11.0"
-# Necesario para implementar AssetSource (sirve el fondo empaquetado).
+# GPUI + plataforma, sin la librería de componentes ni los assets del Kit.
+gpui-kit = { version = "0.11.0", default-features = false }
+
+# Captura de micrófono (WASAPI en Windows).
+cpal = "0.18.2"
+
+# Persistencia de ajustes.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Diálogo nativo de archivos sin GTK/portal/wayland en Windows.
+rfd = { version = "0.18.0", default-features = false, features = ["common-controls-v6"] }
+
+# Puente audio -> UI sin polling.
+async-channel = "2.5"
+
+# HWND a partir de la ventana de GPUI (misma versión que usa GPUI).
+raw-window-handle = "0.6"
+
 anyhow = "1"
 
+[target.'cfg(windows)'.dependencies]
+# Solo el shim de arrastre y "siempre visible". Misma versión que GPUI.
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Input_KeyboardAndMouse",
+] }
+
 [profile.release]
-# Binario pequeno y arranque rapido para descargar desde Actions.
-# Sin LTO agresivo para no alargar minutos de CI en capa gratuita.
+# Binario pequeño y arranque rápido; el CI es quien compila.
 opt-level = 3
 strip = true
+lto = "thin"
+codegen-units = 1

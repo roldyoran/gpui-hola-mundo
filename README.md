@@ -1,76 +1,84 @@
-# gpui-hola-mundo
+# PNGTuber Lite
 
-Maqueta visual de chat con **GPUI + gpui-kit**: panel centrado sobre foto,
-burbujas, composer con iconos **Tabler** y texto en **JetBrains Mono**.
+Overlay de escritorio ultraligero para un avatar PNGTuber: una ventana
+transparente, sin bordes y siempre visible encima del escritorio, que abre y
+cierra la boca con tu voz. Sin IA, sin reconocimiento de voz y sin modelos: solo
+RMS, histéresis y dos imágenes.
 
-Organizado como `gentle-shell-gpui`: un feature por carpeta, tokens en
-`shared`, logica pura testeable y `docs/` que lo documenta todo.
-Ver [`docs/`](docs/README.md) y [`AGENTS.md`](AGENTS.md).
+- Rust + GPUI (sin Electron, sin webview).
+- Dos PNG (boca cerrada / boca abierta) con transparencia real por píxel.
+- VAD por umbral en dBFS con tiempos de ataque/cierre para no parpadear.
+- Selección de micrófono por identificador estable.
+- Ajustes con guardado automático; cerrarlos no cierra el avatar.
+- Arrastrable con el botón izquierdo; clic derecho reabre los ajustes.
 
-Este PC no compila (pocos recursos): solo se escribe codigo aqui y se
-compila en **GitHub Actions (windows-latest)**.
+## Requisitos
+
+- Windows 10 1903 o superior (x86_64).
+- Un micrófono que exponga entrada por WASAPI.
+- Dos PNG con transparencia. No se incluyen avatares de ejemplo.
+
+## Instalación
+
+Este repositorio **no se compila en local**: el único verificador es GitHub
+Actions.
+
+1. Haz push a `main` (o lanza el workflow `Build` a mano).
+2. Abre la pestaña **Actions → Build → último run → Artifacts**.
+3. Descarga `pngtuber-lite-windows-x86_64` y descomprime
+   `pngtuber-lite.exe`.
+
+## Primer arranque
+
+Al no haber imágenes configuradas, se abre la ventana de ajustes:
+
+1. En **Avatar**, elige el PNG de boca cerrada y el de boca abierta.
+2. En **Micrófono**, elige el dispositivo (o deja el predeterminado del
+   sistema) y comprueba que el estado diga *Escuchando*.
+3. Ajusta **Sensibilidad** hasta que la etiqueta cambie entre `SILENCIO` y
+   `HABLANDO` con tu voz normal, sin abrirse con ruido de fondo.
+4. Ajusta el **Tamaño** y, si quieres, desactiva **Siempre visible**.
+
+Los cambios se guardan solos en `%APPDATA%\pngtuber-lite\settings.json`, junto
+a una copia de los PNG en `avatars\`.
+
+## Uso diario
+
+- **Arrastrar:** botón izquierdo sobre el avatar.
+- **Abrir ajustes:** clic derecho sobre el avatar.
+- **Cerrar ajustes:** la X de la ventana; el avatar sigue funcionando.
+- **Salir del todo:** botón **Salir** en ajustes.
+
+## Presupuesto
+
+El objetivo del proyecto es medido, no supuesto. Límites del MVP en
+`docs/benchmarks.md`: RAM privada ≤ 40 MB, working set ≤ 70 MB, CPU en reposo
+≤ 1,5 % de un núcleo, CPU hablando ≤ 3 %, arranque < 400 ms y binario ≤ 16 MB.
+El piso de GPUI en Windows (hilo de VSync) es conocido y se declara.
 
 ## Estructura
 
 ```text
 src/
-├── main.rs              # arranque: assets, fuentes, ventana 1000x700
-├── lib.rs               # biblioteca: expone features y shared
-├── features/chat/       # mod.rs (API) + state.rs (puro+tests) + view.rs (Render)
-└── shared/              # ui.rs (tokens: card, chip, kbd, header, field) + assets.rs
-assets/
-├── fonts/               # JetBrains Mono Regular+Bold (OFL-1.1)
-├── icons/               # send, paperclip, plus, settings, copy, check (Tabler MIT)
-└── images/              # slava-jamm.jpg de fondo
-docs/                    # architecture, design-system, development
-.github/workflows/build.yml  # fmt siempre + clippy/test si cambia Rust + build
+├── main.rs          arranque y composición
+├── app.rs           AppState + bomba de eventos de audio
+├── window.rs        opciones de ventana y apertura de ajustes
+├── win32.rs         shim aislado: arrastre y siempre visible
+├── shared/ui.rs     tokens y controles propios
+└── features/
+    ├── avatar/      carga, copia y decodificación de PNG
+    ├── audio/       cpal, RMS y VAD puro con tests
+    └── settings/    esquema v1, escritura atómica y UI
 ```
 
-Todo el chat es estatico a proposito: los mensajes salen de
-`ChatState::seed()` y ningun control tiene handler.
+## Documentación
 
-## Uso (sin compilar en local)
+- `docs/architecture.md`: módulos, hilos y fronteras.
+- `docs/design-system.md`: tokens y reglas visuales.
+- `docs/benchmarks.md`: cómo se mide y qué se midió.
+- `docs/development.md`: CI, lockfile y convenciones.
+- `odd/tasks/2026-11-25-pngtuber-lite-mvp.md`: plan ODD y evidencia.
 
-```powershell
-git add .
-git commit -m "alcance: descripcion"
-git push
-```
+## Licencia
 
-Luego: Actions → run verde → artifact `gpui-hola-mundo-windows-x86_64`
-(abajo del todo) o:
-
-```powershell
-gh run download <run-id> -n gpui-hola-mundo-windows-x86_64 -D .\dist
-.\dist\gpui-hola-mundo.exe
-```
-
-Si SmartScreen avisa: Más información → Ejecutar de todas formas.
-
-## Versiones (ultimas verificadas 24-nov-2026)
-
-| Tecnologia | Version usada | Fuente |
-| --- | --- | --- |
-| Rust estable (CI) | 1.100.0 (12-nov-2026) | blog.rust-lang.org, `dtolnay/rust-toolchain@stable` |
-| Rust local / MSRV del crate | 1.99 / tienes 1.99.1 | `rust-version = "1.99"`, `edition = "2024"` |
-| gpui-kit | 0.11.0 (23-nov-2026, ultima) | crates.io/api/v1/crates/gpui-kit |
-| GPUI interno (via gpui-kit) | gpui-pre =0.3.14 exacto | crates.io/api/v1/crates/gpui-kit/0.11.0/dependencies |
-| anyhow | 1 (para `AssetSource`) | crates.io |
-| Tabler Icons | set 6 SVG (MIT, © Tabler) | cdn.jsdelivr.net/npm/@tabler/icons |
-| actions/checkout | v7.0.1 + SHA `3d3c42e` | api.github.com/.../checkout/git/refs/tags/v7.0.1 |
-| actions/upload-artifact | v7.0.2 + SHA `cf430e0` | api.github.com/.../upload-artifact/git/refs/tags/v7.0.2 |
-| Swatinem/rust-cache | v2.9.3 + SHA `d1527c8` | api.github.com/.../rust-cache (tag v2.9.3) |
-| dtolnay/rust-toolchain | SHA `3900882` (`stable`, 15-nov-2026) | api.github.com/.../rust-toolchain/commits/stable |
-
-## Ahorro capa gratuita
-
-- Un solo `windows-latest` (Windows x2 min, macOS x10).
-## Ahorrar minutos (el restore del cache es lo caro)
-
-- Sube en lotes: `concurrency.cancel-in-progress: true` cancela el run viejo
-  si haces push dos veces seguidas, no gastas doble.
-- No toques `Cargo.toml`/`Cargo.lock` sin necesidad: cambian la clave del
-  cache y el siguiente build es frio (~10 min) una sola vez.
-- Los pushes que solo tocan docs o assets saltan `clippy`+`test`
-  (deteccion por `git diff` en el workflow) y hacen restore + build.
-- `Swatinem/rust-cache` con `save-if: main` y `retention-days: 7`.
+MIT. El binario no empaqueta fuentes ni iconos de terceros.

@@ -1,46 +1,106 @@
 # Arquitectura
 
-Maqueta de chat de un solo binario, organizada como `gentle-shell-gpui`:
-**monolito modular por features** con fronteras explicitas entre vista,
-logica pura y recursos.
+Monolito modular por features, con fronteras explícitas entre estado, sistema
+operativo y vista. Es la misma forma de `gentle-shell-gpui`, reducida a lo que
+este producto necesita.
 
 ## Componentes
 
 ```mermaid
 flowchart TD
-    Main["main: arranque y composicion"] --> Chat["features/chat: vista y estado"]
-    Chat --> State["state.rs: modelo puro + tests"]
-    Chat --> SharedUI["shared/ui: tokens y piezas"]
-    Chat --> Assets["shared/assets: fondo e iconos"]
+    Main["main: arranque y composición"] --> App["app: AppState global"]
+    Main --> Window["window: opciones y apertura"]
+    Main --> Avatar["features/avatar: PNG y overlay"]
+    Main --> Settings["features/settings: esquema y UI"]
+
+    App --> Audio["features/audio: hilo dueño, RMS, VAD"]
+    App --> Settings
+    Avatar --> State["AppState (observado)"]
+    Settings --> State
+    Avatar --> UI["shared/ui: tokens"]
+    Settings --> UI
+    Settings --> Native["win32: topmost"]
+    Avatar --> Native2["win32: arrastre"]
 ```
 
-| Pieza | Responsabilidad |
-| --- | --- |
-| `src/main.rs` | Arranque: assets, fuentes, ventana. Sin logica ni vistas. |
-| `src/lib.rs` | Biblioteca: expone `features` y `shared`; el binario queda fino y lo `pub` no es codigo muerto. |
-| `src/features/chat` | El chat: `mod.rs` (API publica), `state.rs` (modelo puro), `view.rs` (Render). |
-| `src/shared/ui.rs` | Tokens (`panel, surface, raised, fg, accent…`) y piezas (`card, chip, kbd, screen_header, field`). Sin logica de producto. |
-| `src/shared/assets.rs` | `AssetSource`: sirve fondo e iconos empaquetados, delega el resto al Kit. |
+| Pieza | Responsabilidad | No hace |
+| --- | --- | --- |
+| `src/main.rs` | `application().run`, rutas, ajustes, ventana del avatar, primer arranque | lógica de producto |
+| `src/app.rs` | `AppState`: ajustes, boca, estado de audio, handles; bomba canal → `notify` | dibujar ni decidir VAD |
+| `src/window.rs` | `WindowOptions` de overlay/ajustes, abrir ajustes, redimensionar | controles |
+| `src/win32.rs` | `ReleaseCapture` + `WM_NCLBUTTONDOWN`; `SetWindowPos` | reglas de negocio |
+| `features/avatar` | validar/copiar PNG, decodificar una vez, render del overlay | conocer el audio |
+| `features/audio` | enumerar dispositivos, hilo dueño, stream cpal, VAD, eventos | tocar GPUI |
+| `features/settings` | esquema v1, rutas de datos, escritura atómica, UI | dibujar el avatar |
+| `shared/ui` | tokens y piezas visuales | conocer features |
 
-## Reglas de dependencia
+## Hilos
 
-1. `state.rs` no depende de GPUI ni de IO: solo `String` y enums. Es lo testeable.
-2. `view.rs` consume `state` y `shared`; nunca al reves.
-3. `shared` no conoce ningun feature ni tiene reglas de negocio.
-4. Un modulo sube a `shared/` solo cuando lo usan dos o mas features.
-5. Los tipos se quedan privados salvo que sean contrato real entre modulos
-   (`ChatView`, `ChatState`, `Message`, `Role` son la API de `features/chat`).
-6. Nada de traits ni crates de un solo uso.
-7. Cada refactor preserva comportamiento; el CI lo verifica.
+```text
+Hilo principal (GPUI)
+  overlay + ajustes
+        ▲
+        │ async-channel (solo cambios de boca / estado)
+        │
+Tarea GPUI ── recv().await ── AppState::on_audio_event → notify
+        ▲
+        │ async-channel acotado (8)
+        │
+Hilo dueño de audio ── dormido en recv_blocking
+        │  Apply(config)
+        ▼
+Stream WASAPI (cpal) ── callback: RMS → VAD → try_send solo al cambiar
+```
+
+- El callback de captura no asigna, no bloquea y no consulta el reloj.
+- El hilo dueño reconcilia la configuración: apaga, enciende, cambia de
+  dispositivo o solo actualiza la sensibilidad (atómica, sin reconstruir).
+- En silencio no se notifica a la UI. Hablando hay una notificación por
+  transición, no un frame por buffer.
+- Un cambio de boca produce **una** notificación; la vista observa `AppState`.
 
 ## Flujo de datos
 
 ```mermaid
 flowchart LR
-    Seed["ChatState::seed()"] --> Render["ChatView::render"]
-    Render --> UI["Panel centrado"]
+    Mic["Micrófono"] --> RMS["RMS → dBFS"]
+    RMS --> VAD["Vad (ataque 40 ms / cierre 250 ms)"]
+    VAD -->|cambio| Chan["async-channel"]
+    Chan --> App["AppState.mouth_open"]
+    App -->|notify| Overlay["AvatarView: img(cerrado|abierto)"]
 ```
 
-Hoy el estado es fijo (maqueta visual): el seed alimenta el render y no hay
-eventos de vuelta. Cuando haya backend, los efectos iran en metodos de
-`ChatView` y el estado puro seguira en `state.rs`.
+La posición y el tamaño se leen de `Window::bounds()` después del arrastre
+nativo y se persisten en `settings.json`. Al arrancar, `window::avatar_bounds`
+restaura esos valores.
+
+## Persistencia
+
+```text
+%APPDATA%\pngtuber-lite\
+├── settings.json      esquema v1
+└── avatars\
+    ├── closed.png
+    └── open.png
+```
+
+- JSON corrupto o `schema_version != 1` → valores por defecto.
+- Escritura en `settings.json.tmp` + `fs::rename` (en Windows reemplaza).
+- Los PNG se copian al directorio de datos para no depender del original.
+
+## Reglas de dependencia
+
+1. `vad.rs` y `settings/mod.rs` no dependen de GPUI ni de cpal.
+2. `stream.rs` depende de cpal, nunca de GPUI.
+3. Las vistas dependen de `AppState` y `shared`; nunca al revés.
+4. `shared` no conoce ningún feature.
+5. `unsafe` solo en `win32.rs` (plataforma) y aislado por función.
+6. Los tipos se quedan privados salvo que crucen una frontera real.
+
+## Decisión sobre GPUI
+
+GPUI en Windows mantiene un hilo de VSync que invalida las ventanas visibles en
+cada refresco. Eso fija un piso de CPU (~1,2 % de un núcleo medido en el
+proyecto base de 1000×700). Se acepta en el MVP. Si en el futuro se exigiera
+0 %, el overlay migraría a `WS_EX_LAYERED` + `UpdateLayeredWindow` sin tocar
+`vad.rs`, `settings` ni `app.rs`; el resto de la arquitectura ya está separado.

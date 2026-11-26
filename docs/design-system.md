@@ -1,54 +1,53 @@
 # Sistema de diseño
 
-Tokens y piezas copiados de `gentle-shell-gpui` (`crates/app/src/shared/ui.rs`)
-y adaptados a un solo tema oscuro. Regla: ningun feature inventa colores,
-bordes o radios; todo sale de `src/shared/ui.rs`.
+Una sola ventana de ajustes, un solo tema oscuro y controles propios. Las
+reglas existen para que un agente no invente estilos: todo sale de
+`src/shared/ui.rs`.
 
-## Tokens (`shared::ui`)
+## Tokens
 
-| Token | Uso |
-| --- | --- |
-| `panel` | Fondo del panel de chat |
-| `surface` | Tarjetas, burbuja del asistente |
-| `raised` | Burbuja del usuario |
-| `well` | Composer, huecos oscuros |
-| `border`, `border_strong`, `input_border` | Bordes |
-| `fg`, `muted`, `faint` | Texto principal, secundario, tenue |
-| `accent` | Rosa de marca: enviar, avatar |
-| `success`, `info`, `warning`, `danger` | Chips de estado |
-| `mono()` | JetBrains Mono empaquetada |
-
-## Componentes
-
-| Pieza | Origen | Uso aqui |
+| Token | Valor | Uso |
 | --- | --- | --- |
-| `card()` | `ui.rs:card` | Base de tarjetas |
-| `chip(text, kind)` | `ui.rs:chip` | `maqueta visual`, `sin backend` (variantes `ChipKind`, sin colores sueltos) |
-| `kbd(text)` | `ui.rs:kbd` | Atajos (reservado para el composer interactivo) |
-| `section_label(text)` | `ui.rs:section_label` | Titulos de seccion |
-| `screen_header()` | `ui.rs:screen_header` | Cabecera del panel (marca, titulo, acciones) |
-| `field()` | `ui.rs:field` | Marco del composer |
-| `shortcut(key)` | `ui.rs:shortcut` | `Ctrl+K` / `⌘K` segun SO |
+| `panel` | `#121216` | fondo de la ventana de ajustes |
+| `surface` | `#1e1e28` | tarjetas |
+| `well` | `#0e0e13` | listas, medidores, fondos de botón |
+| `button_bg` | `#2a2a38` | botón neutro |
+| `danger_bg` | `#3a1f26` | botón de salida |
+| `border` | blanco 12 % | bordes |
+| `fg` | `#f2f0eb` | texto principal |
+| `muted` | `#c9c4bb` | texto secundario |
+| `faint` | `#8a857c` | pistas y etiquetas |
+| `accent` | `#e85d9e` | selección, medidor, foco |
+| `success` | `#7ee2a8` | micrófono escuchando |
+| `warning` | `#f5c97a` | conectando |
+| `danger` | `#f58a8a` | errores |
+| `selected` | acento 15 % | fila activa |
 
-## Iconos Tabler
+## Piezas
 
-6 SVG de [Tabler Icons](https://tabler.io) (MIT, © Tabler): `send`,
-`paperclip`, `plus`, `settings`, `copy`, `check`. Van empaquetados en
-`assets/icons/` y se sirven por clave (`icons/send.svg`) desde
-`shared::assets::AppAssets`. Se dibujan con `svg().path(...).text_color(...)`
-(ver guia `gpui-kit.com/docs/image`): el color **debe** ir en el elemento.
+- `card()`: sección con `gap_3`, padding 14, radio `xl`, borde `1px`.
+- `screen_header()`: fila con título y acción, borde inferior.
+- `section_label()`: 11 px, semibold, mayúsculas, `faint`.
+- `label()` / `hint()`: 13 px principal / 11 px tenue.
+- `button()` / `danger_button()`: 28 px de alto, padding horizontal 12, radio
+  `lg`. Nunca un botón fuera de estas dos piezas.
+- `list_row(selected)`: 30 px, fondo `well` o `selected`, borde acento si está
+  activa.
+- `meter_fill(percent)`: barra de 6 px; el ancho lo calcula el token.
 
-Para agregar uno: descargalo a `assets/icons/`, registralo en el `match` de
-`assets.rs` y usalo con la clave `icons/<nombre>.svg`.
+## Reglas
 
-## Fuentes
-
-JetBrains Mono Regular + Bold empaquetadas (`assets/fonts/`, OFL-1.1) y
-registradas con `TextSystem::add_fonts` antes del primer frame
-(patron de `gpui-kit.com/docs/fonts`). Todo el chat la usa via `ui::mono()`.
-
-## Fondo
-
-`assets/images/slava-jamm.jpg` (119 KB) a pantalla completa con
-`ObjectFit::Cover` + velo negro al 65 % (`rgba(0x000000a6)`): la foto es muy
-clara arriba y el texto blanco necesita contraste.
+1. Ningún feature escribe `rgb`/`rgba` directamente: usa un token.
+2. Radios permitidos: `md` (chips), `lg` (botones/filas), `xl` (tarjetas),
+   `full` (medidor).
+3. Alturas de control: 28 px (botón), 30 px (fila). No inventar otras.
+4. Texto: `text_sm` para contenido, `text_xs` para apoyo. Semibold solo en
+   títulos y etiquetas de sección.
+5. Separación: `gap_2` dentro de un control, `gap_3` entre bloques, `p(20)`
+   en el cuerpo de la ventana.
+6. El overlay no pinta fondo: cualquier `bg` en la raíz rompería la
+   transparencia.
+7. Los estados (`SILENCIO`/`HABLANDO`, `Activada`/`Desactivada`) se comunican
+   con color **y** texto; nunca solo con color.
+8. No hay animaciones en el MVP. Un cambio de estado es un repintado, no un
+   tween.

@@ -1,30 +1,24 @@
-//! Tokens y piezas visuales compartidas por todos los features.
+//! Tokens y piezas visuales compartidas.
 //!
-//! Copiado de `gentle-shell-gpui` (`crates/app/src/shared/ui.rs`) y adaptado:
-//! alli los tokens leen la paleta del tema activo; aqui son constantes porque
-//! la app es de un solo tema oscuro sobre foto. Regla de la casa: ningun
-//! feature inventa colores, bordes o radios; todo sale de este modulo.
+//! Regla de la casa (heredada de `gentle-shell-gpui`): ningún feature inventa
+//! colores, radios ni alturas; todo sale de este módulo. Sin dependencias de
+//! producto: aquí no se sabe qué es un avatar ni un micrófono.
 
 use gpui_kit::*;
 
 // ── Tokens ───────────────────────────────────────────────────────────────
 
-/// Fondo del panel de chat.
+/// Fondo de la ventana de ajustes.
 pub fn panel() -> Rgba {
-    rgba(0x141419f2)
+    rgba(0x121216ff)
 }
 
-/// Tarjetas y campos.
+/// Tarjetas y controles.
 pub fn surface() -> Rgba {
     rgba(0x1e1e28ff)
 }
 
-/// Burbuja del usuario.
-pub fn raised() -> Rgba {
-    rgba(0x35334aff)
-}
-
-/// Huecos oscuros (composer, codigo).
+/// Huecos oscuros: listas, medidores, fondos de botón.
 pub fn well() -> Rgba {
     rgba(0x0e0e13ff)
 }
@@ -32,16 +26,6 @@ pub fn well() -> Rgba {
 /// Bordes sutiles.
 pub fn border() -> Rgba {
     rgba(0xffffff1f)
-}
-
-/// Bordes que deben notarse (panel).
-pub fn border_strong() -> Rgba {
-    rgba(0xffffff3d)
-}
-
-/// Borde de campos de texto.
-pub fn input_border() -> Rgba {
-    rgba(0xffffff2e)
 }
 
 /// Texto principal.
@@ -54,22 +38,18 @@ pub fn muted() -> Rgba {
     rgb(0xc9c4bb)
 }
 
-/// Texto tenue (placeholders, pistas).
+/// Texto tenue (pistas, placeholders).
 pub fn faint() -> Rgba {
     rgb(0x8a857c)
 }
 
-/// Acento de marca: rosa Gentle para enviar, avatar y focos.
+/// Acento de marca: selección, medidor y foco.
 pub fn accent() -> Rgba {
     rgb(0xe85d9e)
 }
 
 pub fn success() -> Rgba {
     rgb(0x7ee2a8)
-}
-
-pub fn info() -> Rgba {
-    rgb(0x7ab8f5)
 }
 
 pub fn warning() -> Rgba {
@@ -80,128 +60,107 @@ pub fn danger() -> Rgba {
     rgb(0xf58a8a)
 }
 
-/// Familia monoespaciada de la app (empaquetada, ver `shared::assets`).
-pub fn mono() -> SharedString {
-    "JetBrains Mono".into()
+/// Fondo de una fila seleccionada.
+pub fn selected() -> Rgba {
+    rgba(0xe85d9e26)
 }
 
-/// Atajo con la tecla tal cual (`Ctrl+K` fuera de macOS, `⌘K` en macOS).
-/// Copiado de `ui::shortcut` (alla coincide con los `key!()` de `app/mod.rs`).
-pub fn shortcut(key: &str) -> String {
-    if cfg!(target_os = "macos") {
-        format!("⌘{key}")
-    } else {
-        format!("Ctrl+{key}")
-    }
+/// Fondo de botón neutro.
+pub fn button_bg() -> Rgba {
+    rgba(0x2a2a38ff)
 }
 
-// ── Building blocks ──────────────────────────────────────────────────────
-// Copiados de `ui.rs` de gentle-shell: misma forma, tokens propios.
+/// Fondo de botón destructivo.
+pub fn danger_bg() -> Rgba {
+    rgba(0x3a1f26ff)
+}
 
-/// La tarjeta estandar: paneles, burbujas, grupos.
+// ── Piezas ───────────────────────────────────────────────────────────────
+
+/// La tarjeta estándar: sección de ajustes.
 pub fn card() -> Div {
     div()
         .flex()
         .flex_col()
+        .gap_3()
+        .p(px(14.))
         .rounded_xl()
         .bg(surface())
         .border_1()
         .border_color(border())
 }
 
-/// Recuadro oscuro para codigo y salidas.
-pub fn well_box() -> Div {
-    div()
-        .flex()
-        .flex_col()
-        .rounded_lg()
-        .bg(well())
-        .border_1()
-        .border_color(border())
-        .font_family(mono())
-        .text_sm()
-}
-
-/// Variantes de [`chip`]: la casa no admite colores sueltos, solo tokens.
-pub enum ChipKind {
-    Neutral,
-    Success,
-    Info,
-    Accent,
-}
-
-/// Pildora pequena: estado, modelo, etiquetas.
-pub fn chip(text: impl Into<SharedString>, kind: ChipKind) -> Div {
-    let (text_color, bg, border_color) = match kind {
-        ChipKind::Neutral => (muted(), rgba(0xffffff12), rgba(0xffffff1f)),
-        ChipKind::Success => (success(), rgba(0x7ee2a81f), rgba(0x7ee2a838)),
-        ChipKind::Info => (info(), rgba(0x7ab8f51f), rgba(0x7ab8f538)),
-        ChipKind::Accent => (accent(), rgba(0xe85d9e1f), rgba(0xe85d9e38)),
-    };
-    div()
-        .px_1p5()
-        .py(px(1.))
-        .rounded_md()
-        .text_sm()
-        .text_color(text_color)
-        .bg(bg)
-        .border_1()
-        .border_color(border_color)
-        .child(text.into())
-}
-
-/// Tecla de atajo (`esc`, `↵`).
-pub fn kbd(text: impl Into<SharedString>) -> Div {
-    div()
-        .min_w(px(20.))
-        .h(px(20.))
-        .px_1p5()
-        .flex()
-        .items_center()
-        .justify_center()
-        .rounded_md()
-        .border_1()
-        .border_color(border_strong())
-        .bg(surface())
-        .font_family(mono())
-        .text_sm()
-        .text_color(muted())
-        .child(text.into())
-}
-
-/// Micro encabezado en mayusculas para secciones.
-pub fn section_label(text: impl Into<SharedString>) -> Div {
-    div()
-        .text_sm()
-        .font_weight(FontWeight::SEMIBOLD)
-        .text_color(faint())
-        .child(text.into().to_uppercase())
-}
-
-/// Fila de cabecera de los paneles: icono, titulo y acciones.
+/// Cabecera de la ventana: título a la izquierda, acciones a la derecha.
 pub fn screen_header() -> Div {
     div()
         .flex()
         .flex_row()
         .items_center()
-        .px_5()
-        .py_3()
-        .gap_3()
+        .justify_between()
+        .px(px(20.))
+        .py(px(14.))
         .border_b_1()
         .border_color(border())
 }
 
-/// Marco de campo de texto (altura, radio y borde unicos en la app).
-pub fn field() -> Div {
+/// Micro encabezado en mayúsculas para secciones.
+pub fn section_label(text: impl Into<SharedString>) -> Div {
+    div()
+        .text_xs()
+        .font_weight(FontWeight::SEMIBOLD)
+        .text_color(faint())
+        .child(text.into().to_uppercase())
+}
+
+/// Texto principal de un control.
+pub fn label(text: impl Into<SharedString>) -> Div {
+    div().text_sm().text_color(fg()).child(text.into())
+}
+
+/// Texto de apoyo.
+pub fn hint(text: impl Into<SharedString>) -> Div {
+    div().text_xs().text_color(faint()).child(text.into())
+}
+
+/// Botón neutro. El handler lo pone quien lo usa.
+pub fn button(text: impl Into<SharedString>) -> Div {
+    div()
+        .flex()
+        .items_center()
+        .justify_center()
+        .h(px(28.))
+        .px(px(12.))
+        .rounded_lg()
+        .bg(button_bg())
+        .border_1()
+        .border_color(border())
+        .text_sm()
+        .text_color(fg())
+        .child(text.into())
+}
+
+/// Botón de salida, con tinte rojo.
+pub fn danger_button(text: impl Into<SharedString>) -> Div {
+    button(text).bg(danger_bg()).text_color(danger())
+}
+
+/// Fila seleccionable de una lista (micrófonos).
+pub fn list_row(selected: bool) -> Div {
     div()
         .flex()
         .flex_row()
         .items_center()
-        .gap_2()
-        .h(px(34.))
-        .px_3()
+        .justify_between()
+        .h(px(30.))
+        .px(px(10.))
         .rounded_lg()
-        .bg(well())
+        .bg(if selected { selected() } else { well() })
         .border_1()
-        .border_color(input_border())
+        .border_color(if selected { accent() } else { border() })
+}
+
+/// Pista visual de una escala 0–100.
+pub fn meter_fill(percent: u8) -> Div {
+    let width = 8.0 + f32::from(percent.min(100)) * 1.6;
+    div().h(px(6.)).w(px(width)).rounded_full().bg(accent())
 }

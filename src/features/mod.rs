@@ -1,4 +1,6 @@
-//! Un feature por carpeta: `mod.rs` guarda la API publica y los
-//! submodulos anaden `impl` y marcan lo compartido como `pub(super)`.
+//! Un feature por carpeta: `mod.rs` guarda la API pública y los submódulos
+//! añaden `impl`. `view.rs` es GPUI; el resto es lógica pura o de sistema.
 
-pub mod chat;
+pub mod audio;
+pub mod avatar;
+pub mod settings;

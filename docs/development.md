@@ -1,46 +1,57 @@
 # Desarrollo
 
-Este PC no compila (pocos recursos): solo se escribe codigo aqui y todo se
-verifica en GitHub Actions.
+## Regla de oro: no se compila en local
 
-## Flujo
+Este equipo no ejecuta `cargo check`, `cargo clippy` ni `cargo build`. El único
+verificador es GitHub Actions. Antes de un push, la superficie de API se
+contrasta leyendo:
 
-```powershell
-cd gpui-hola-mundo
-git add .
-git commit -m "alcance: descripcion"
-git push
-```
+- `~/.cargo/registry/src/index.crates.io-*/gpui-pre-0.3.14/`
+- `~/.cargo/registry/src/index.crates.io-*/gpui-kit-0.11.0/`
+- docs.rs para `cpal 0.18.2`, `rfd 0.18.0` y `windows 0.62.x`
 
-Cada push a `main` (o PR) lanza `Build` en `windows-latest`: `fmt --check`
-siempre, `clippy -D warnings` y `test` solo si cambiaron `src/`, `Cargo.toml`
-o `Cargo.lock`, y `cargo build --release` siempre, que sube el `.exe` como
-artifact `gpui-hola-mundo-windows-x86_64` (retencion 7 dias).
+El ciclo de corrección es: push → Actions → leer el error → corregir → push.
 
-## Descargar el binario
+## Qué corre el CI
 
-```powershell
-gh run download <run-id> -n gpui-hola-mundo-windows-x86_64 -D .\dist
-.\dist\gpui-hola-mundo.exe
-```
+`.github/workflows/build.yml`, en `windows-latest`:
 
-O desde la web: Actions → run verde → Artifacts (abajo del todo).
+1. `cargo fmt --check` (siempre).
+2. `cargo clippy --all-targets -- -D warnings` (si cambió Rust).
+3. `cargo test` (si cambió Rust).
+4. `cargo build --release` (siempre).
+5. Sube `target/release/pngtuber-lite.exe` como
+   `pngtuber-lite-windows-x86_64` (7 días).
 
-## Agregar un feature
+No hay matrix ni jobs paralelos: la capa gratuita se cuida con caché de Cargo y
+`concurrency` con cancelación.
 
-1. Crea `src/features/<nombre>/` con `mod.rs` (API publica), `state.rs`
-   (logica pura + tests) y `view.rs` (Render).
-2. Registralo en `src/features/mod.rs`.
-3. Si una pieza la usan dos features, subela a `src/shared/`.
-4. Documenta el cambio en `docs/` si mueve una frontera.
+## Cargo.lock
 
-## Agregar un icono Tabler
+El lock se resuelve en el runner porque el PC local nunca compila. El workflow
+**no** usa `--locked`: si el lock del repo va por detrás del `Cargo.toml`,
+Cargo lo actualiza en el runner sin abortar. Al añadir una dependencia, el
+`Cargo.lock` del repo puede quedar desactualizado; es esperado y no rompe el
+build.
 
-1. Descarga el SVG a `assets/icons/`.
-2. Registra la clave en `src/shared/assets.rs`.
-3. Usalo: `svg().path("icons/<nombre>.svg").text_color(...)`.
+## Añadir una dependencia
 
-## Licencias de assets
+1. Justifica el motivo en el PR o en `odd/tasks/`.
+2. Fija la versión (`"0.18.2"`, no `"*"`).
+3. Comprueba features: por defecto, nada de GTK, X11 ni assets innecesarios.
+4. Si es solo para Windows, métela en `[target.'cfg(windows)'.dependencies]`.
+5. Actualiza el presupuesto de `docs/benchmarks.md` si afecta al binario.
 
-- JetBrains Mono: OFL-1.1 (`assets/fonts/OFL.txt`).
-- Tabler Icons: MIT (© Tabler, https://tabler.io).
+## Ramas y commits
+
+- `main` es lo que se publica; el CI sube el artefacto de cada push.
+- Commits en imperativo y con alcance: `feat(audio): ...`, `fix(win32): ...`,
+  `docs(odd): ...`.
+- No se commitea `target/` ni binarios.
+
+## Depuración sin consola
+
+El binario de release no abre consola. Los errores recuperables (PNG inválido,
+micrófono ocupado o desconectado) se muestran en la ventana de ajustes. Para
+ver el detalle completo, ejecuta el `.exe` desde PowerShell y observa el
+diálogo de ajustes; no hay `println!` en el código de producto.

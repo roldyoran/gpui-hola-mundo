@@ -1,43 +1,46 @@
-//! Punto de entrada: solo arranque y composicion.
+//! Punto de entrada: arranque y composición, sin lógica.
 //!
-//! La regla del repo: `main.rs` no tiene logica ni vistas; registra assets,
-//! fuentes y abre la ventana con `features::chat::ChatView`.
+//! Orden: rutas -> ajustes -> estado global -> ventana del avatar. Si todavía
+//! no hay PNG configurados, se abre también la ventana de ajustes.
 
-use std::borrow::Cow;
-
-use gpui_hola_mundo::features::chat::ChatView;
-use gpui_hola_mundo::shared::assets::AppAssets;
 use gpui_kit::*;
 
+use pngtuber_lite::app::AppState;
+use pngtuber_lite::features::avatar::AvatarView;
+use pngtuber_lite::features::settings::{Paths, Settings};
+use pngtuber_lite::window;
+
 fn main() {
-    application().with_assets(AppAssets).run(|cx| {
-        // Temas y componentes del Kit, una sola vez.
-        init(cx);
+    gpui_kit::application().run(|cx| {
+        gpui_kit::init(cx);
 
-        // Fuente empaquetada: antes del primer frame
-        // (patron de `gpui-kit.com/docs/fonts`).
-        cx.text_system()
-            .add_fonts(vec![
-                Cow::Borrowed(
-                    include_bytes!("../assets/fonts/JetBrainsMono-Regular.ttf").as_slice(),
-                ),
-                Cow::Borrowed(include_bytes!("../assets/fonts/JetBrainsMono-Bold.ttf").as_slice()),
-            ])
-            .expect("no se pudieron cargar las fuentes");
+        let paths = Paths::discover();
+        let settings = Settings::load(&paths);
 
-        // Ventana centrada en pantalla; el chat va centrado dentro.
-        let bounds = Bounds::centered(None, size(px(1000.), px(700.)), cx);
+        let needs_setup = settings.avatar.closed.is_none() || settings.avatar.open.is_none();
+        let always_on_top = settings.window.always_on_top;
+        let avatar_bounds = window::avatar_bounds(&settings, cx);
 
-        open_window(
-            WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(bounds)),
-                ..Default::default()
-            },
-            cx,
-            |_, cx| cx.new(|_| ChatView::new()),
-        )
-        .expect("no se pudo abrir la ventana");
+        let state = cx.new(|cx| AppState::new(cx, paths, settings));
+        let avatar_state = state.clone();
+        let avatar_view = cx.new(|cx| AvatarView::new(avatar_state, cx));
+        let avatar_window = cx
+            .open_window(window::avatar_options(avatar_bounds), move |_, _| {
+                avatar_view
+            })
+            .expect("no se pudo abrir la ventana del avatar");
+        let avatar_window: AnyWindowHandle = avatar_window.into();
 
-        cx.activate(true);
+        state.update(cx, |state, _| {
+            state.avatar_window = Some(avatar_window);
+        });
+
+        let _ = avatar_window.update(cx, |_, window, _| {
+            pngtuber_lite::win32::set_topmost(window, always_on_top);
+        });
+
+        if needs_setup {
+            let _ = window::open_settings(state.clone(), cx);
+        }
     });
 }
