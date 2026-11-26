@@ -66,7 +66,7 @@ mod imp {
     use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
     use windows::Win32::UI::WindowsAndMessaging::{
         DeleteMenu, DrawMenuBar, GetCursorPos, GetSystemMenu, GetSystemMetrics, GetWindowRect,
-        HWND_NOTOPMOST, HWND_TOPMOST, MF_BYCOMMAND, SC_CLOSE, SM_CXVIRTUALSCREEN,
+        HWND_NOTOPMOST, HWND_TOP, HWND_TOPMOST, MF_BYCOMMAND, SC_CLOSE, SM_CXVIRTUALSCREEN,
         SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
         SetWindowPos,
     };
@@ -400,6 +400,29 @@ mod imp {
         }
     }
 
+    /// Sube el overlay al frente sin robar el foco.
+    ///
+    /// `HWND_TOP` respeta la banda de orden Z: si ya es topmost queda arriba
+    /// del resto; si no, queda por encima de la ventana de ajustes (normal).
+    pub fn raise(window: &Window) {
+        let Some(hwnd) = hwnd(window) else {
+            return;
+        };
+        // SAFETY: `hwnd` es válido mientras la ventana exista; solo cambia el
+        // orden Z y `SWP_NOACTIVATE` mantiene el foco en ajustes.
+        unsafe {
+            let _ = SetWindowPos(
+                hwnd,
+                Some(HWND_TOP),
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+            );
+        }
+    }
+
     /// Guarda la posición visible inicial para poder aparcar y volver.
     pub fn remember_origin(window: &Window) {
         PARKED.store(false, Ordering::Relaxed);
@@ -432,7 +455,7 @@ mod imp {
 
 #[cfg(windows)]
 pub use imp::{
-    begin_drag, begin_resize, disable_close, drag_step, park, remember_origin, resize_step,
+    begin_drag, begin_resize, disable_close, drag_step, park, raise, remember_origin, resize_step,
     set_topmost, show,
 };
 
@@ -477,6 +500,9 @@ pub fn remember_origin(_window: &gpui_kit::Window) {}
 
 #[cfg(not(windows))]
 pub fn park(_window: &gpui_kit::Window) {}
+
+#[cfg(not(windows))]
+pub fn raise(_window: &gpui_kit::Window) {}
 
 #[cfg(not(windows))]
 pub fn show(_window: &gpui_kit::Window) {}

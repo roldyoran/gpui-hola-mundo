@@ -28,7 +28,7 @@ flowchart TD
 | `src/main.rs` | `application().run`, rutas, ajustes y apertura inicial de la ventana de ajustes. Nunca crea el overlay. | lógica de producto |
 | `src/app.rs` | `AppState`: ajustes, boca, estado de audio, handles y flag de aparcado; bomba canal → `notify` | dibujar ni decidir VAD |
 | `src/window.rs` | `WindowOptions` de overlay/ajustes, abrir ajustes, crear el overlay al pulsar **Mostrar**, redimensionar y aparcar/mostrar | controles |
-| `src/win32.rs` | arrastre y redimensionado manuales con `SetWindowPos`, topmost, aparcado fuera de pantalla y `SC_CLOSE` deshabilitado | reglas de negocio |
+| `src/win32.rs` | arrastre y redimensionado manuales con `SetWindowPos`, topmost, traer al frente, aparcado fuera de pantalla y `SC_CLOSE` deshabilitado | reglas de negocio |
 | `features/avatar` | validar/copiar PNG, decodificar una vez, render del overlay y zonas de resize | conocer el audio |
 | `features/audio` | enumerar dispositivos, hilo dueño, stream cpal, VAD, eventos | tocar GPUI |
 | `features/settings` | esquema v1, rutas de datos, escritura atómica, UI y previsualización lateral | dibujar el overlay real |

@@ -52,6 +52,12 @@ avatar; el overlay real no existe hasta pulsar **Mostrar**. Además:
 - **D9 · Ajustes siempre accesibles.** La ventana sigue sin cerrarse y se
   puede minimizar/maximizar; al pulsar **Mostrar** o el clic derecho del
   avatar se reactiva.
+- **D10 · Mostrar siempre al frente.** `win32::raise` usa `HWND_TOP` al crear
+  o desaparcar el overlay: queda por encima de ajustes sin robarle el foco.
+  Así **Ocultar → Mostrar** no deja el avatar escondido detrás del menú.
+- **D11 · Sin consola en release.** `main.rs` declara
+  `windows_subsystem = "windows"` fuera de debug. El artefacto del CI ya era
+  `--release`; lo que se veía era la consola del subsistema, no un build debug.
 
 ## Criterios de aceptación
 
@@ -60,12 +66,14 @@ avatar; el overlay real no existe hasta pulsar **Mostrar**. Además:
       boca.
 - [x] **Mostrar** crea el overlay real; antes de pulsarlo no hay overlay.
 - [ ] **Ocultar** sigue aparcando el avatar fuera de pantalla y **Mostrar** lo
-      devuelve exactamente a la posición donde estaba (o lo crea ahí).
+      devuelve exactamente a la posición donde estaba (o lo crea ahí) y por
+      encima de ajustes.
 - [x] El overlay no tiene botón ni acción de pantalla completa.
 - [x] `Ctrl+Alt+P` ya no existe.
 - [ ] Arrastrar lados y esquinas cambia el tamaño; se guarda al soltar.
 - [x] La rueda desplaza el cuerpo de ajustes hasta la última sección.
 - [x] Ajustes se redimensiona, se maximiza y no se cierra.
+- [ ] El `.exe` de release no abre ninguna ventana de consola.
 - [x] `fmt`, `clippy -D warnings`, tests y release pasan en Actions.
 
 ## Evidencia

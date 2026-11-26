@@ -94,7 +94,10 @@ pub fn show_avatar_overlay(state: &Entity<AppState>, cx: &mut App) {
     };
 
     if let Some(handle) = existing {
-        let _ = handle.update(cx, |_, window, _| crate::win32::show(window));
+        let _ = handle.update(cx, |_, window, _| {
+            crate::win32::show(window);
+            crate::win32::raise(window);
+        });
         state.update(cx, |state, cx| {
             state.avatar_parked = false;
             cx.notify();
@@ -120,6 +123,7 @@ pub fn show_avatar_overlay(state: &Entity<AppState>, cx: &mut App) {
     let _ = handle.update(cx, |_, window, _| {
         crate::win32::set_topmost(window, topmost);
         crate::win32::remember_origin(window);
+        crate::win32::raise(window);
     });
 }
 
@@ -161,7 +165,10 @@ pub fn show_avatar(state: &Entity<AppState>, cx: &mut App) {
     }
     let handle = state.read(cx).avatar_window;
     if let Some(handle) = handle {
-        let _ = handle.update(cx, |_, window, _| crate::win32::show(window));
+        let _ = handle.update(cx, |_, window, _| {
+            crate::win32::show(window);
+            crate::win32::raise(window);
+        });
         state.update(cx, |state, cx| {
             state.avatar_parked = false;
             cx.notify();

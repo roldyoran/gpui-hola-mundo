@@ -31,6 +31,9 @@ Actions.
 3. Descarga `pngtuber-lite-windows-x86_64` y descomprime
    `pngtuber-lite.exe`.
 
+> `cargo build --release` ya produce el binario final. El `.exe` usa el
+> subsistema de Windows: al abrirlo **no** aparece una ventana de consola.
+
 ## Primer arranque
 
 La app abre solo la ventana de ajustes, con una **previsualización** del avatar
@@ -59,7 +62,8 @@ a una copia de los PNG en `avatars\`.
   **Maximizar** de Windows. Sigue en la barra de tareas.
 - **Ocultar de la pantalla sin cerrar:** en **Ventana** o en la preview, botón
   **Ocultar**. El avatar se aparca fuera de los monitores y **sigue
-  renderizando para OBS**. **Mostrar** lo devuelve a su última posición.
+  renderizando para OBS**. **Mostrar** lo devuelve a su última posición y lo
+  sube por encima de la ventana de ajustes.
 - **Salir del todo:** botón **Salir de la app** en el pie de ajustes.
 
 > Minimizar con la barra de Windows congela la captura de OBS. Para OBS usa
