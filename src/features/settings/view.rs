@@ -1057,6 +1057,7 @@ impl Render for SettingsView {
         let wide = f32::from(window.viewport_size().width) >= 950.0;
         let body = if wide {
             div()
+                .id("settings-wide")
                 .flex()
                 .flex_row()
                 .flex_1()
