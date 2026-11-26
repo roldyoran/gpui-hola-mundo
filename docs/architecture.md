@@ -50,6 +50,8 @@ Hilo dueño de audio ── dormido en recv_blocking
         │  Apply(config)
         ▼
 Stream WASAPI (cpal) ── callback: RMS → VAD → try_send solo al cambiar
+        │
+        └─ AtomicU32 con el último dBFS (solo lo lee la vista de ajustes)
 ```
 
 - El callback de captura no asigna, no bloquea y no consulta el reloj.
@@ -58,6 +60,8 @@ Stream WASAPI (cpal) ── callback: RMS → VAD → try_send solo al cambiar
 - En silencio no se notifica a la UI. Hablando hay una notificación por
   transición, no un frame por buffer.
 - Un cambio de boca produce **una** notificación; la vista observa `AppState`.
+- El medidor de nivel no usa el canal: lee un `AtomicU32` cada 45 ms mientras
+  la ventana de ajustes está abierta. El overlay no se redibuja por el nivel.
 
 ## Flujo de datos
 

@@ -57,7 +57,7 @@ pub fn open_settings(state: Entity<AppState>, cx: &mut App) -> anyhow::Result<()
         return Ok(());
     }
 
-    let bounds = Bounds::centered(None, size(px(540.), px(760.)), cx);
+    let bounds = Bounds::centered(None, size(px(620.), px(680.)), cx);
     let view_state = state.clone();
     let handle = cx.open_window(settings_options(bounds), move |_, cx| {
         cx.new(|cx| SettingsView::new(view_state, cx))

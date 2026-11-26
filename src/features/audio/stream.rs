@@ -6,7 +6,7 @@
 
 use std::str::FromStr;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU8, AtomicU32, Ordering};
 
 use async_channel::Sender;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
@@ -33,6 +33,7 @@ impl ActiveStream {
 pub fn open(
     config: &AudioConfig,
     sensitivity: Arc<AtomicU8>,
+    level: Arc<AtomicU32>,
     events: Sender<AudioEvent>,
 ) -> Result<ActiveStream, String> {
     let host = cpal::default_host();
@@ -60,6 +61,7 @@ pub fn open(
             channels,
             sample_rate,
             sensitivity,
+            level,
             events,
         ),
         SampleFormat::F64 => build::<f64>(
@@ -68,6 +70,7 @@ pub fn open(
             channels,
             sample_rate,
             sensitivity,
+            level,
             events,
         ),
         SampleFormat::I16 => build::<i16>(
@@ -76,6 +79,7 @@ pub fn open(
             channels,
             sample_rate,
             sensitivity,
+            level,
             events,
         ),
         SampleFormat::I32 => build::<i32>(
@@ -84,6 +88,7 @@ pub fn open(
             channels,
             sample_rate,
             sensitivity,
+            level,
             events,
         ),
         SampleFormat::I8 => build::<i8>(
@@ -92,6 +97,7 @@ pub fn open(
             channels,
             sample_rate,
             sensitivity,
+            level,
             events,
         ),
         SampleFormat::U16 => build::<u16>(
@@ -100,6 +106,7 @@ pub fn open(
             channels,
             sample_rate,
             sensitivity,
+            level,
             events,
         ),
         SampleFormat::U8 => build::<u8>(
@@ -108,6 +115,7 @@ pub fn open(
             channels,
             sample_rate,
             sensitivity,
+            level,
             events,
         ),
         other => Err(format!("Formato de audio no soportado: {other:?}")),
@@ -127,6 +135,7 @@ fn build<T>(
     channels: usize,
     sample_rate: u32,
     sensitivity: Arc<AtomicU8>,
+    level: Arc<AtomicU32>,
     events: Sender<AudioEvent>,
 ) -> Result<cpal::Stream, String>
 where
@@ -153,6 +162,8 @@ where
                 let rms = (sum / data.len() as f64).sqrt();
                 let db = (20.0 * rms.max(1e-7).log10()) as f32;
                 let frames = data.len() / channels;
+
+                level.store(db.to_bits(), Ordering::Relaxed);
 
                 if vad.process(db, frames) {
                     let _ = events.try_send(AudioEvent::Mouth(vad.is_open()));

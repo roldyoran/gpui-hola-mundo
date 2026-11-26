@@ -75,6 +75,16 @@ impl AppState {
         self.audio.refresh_devices();
     }
 
+    /// Nivel RMS instantáneo en dBFS; `−∞` si no hay captura.
+    pub fn level_db(&self) -> f32 {
+        self.audio.level_db()
+    }
+
+    /// Descarta el último aviso del micrófono.
+    pub fn clear_audio_error(&mut self) {
+        self.audio_error = None;
+    }
+
     /// Guarda los ajustes de forma atómica y deja constancia de un fallo.
     pub fn persist(&mut self) {
         match self.settings.save(&self.paths) {

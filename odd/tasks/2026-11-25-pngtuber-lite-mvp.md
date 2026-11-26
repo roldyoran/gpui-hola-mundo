@@ -143,7 +143,7 @@ Estados del `todo`: `pending` → `in_progress` → `done`. Cada slice termina c
 | **OD-06** | Integración: primera ejecución sin avatar abre ajustes; cerrar ajustes no cierra la app; reinicio de audio al cambiar de dispositivo | `implementing` → `checking` | S1–S7 a mano |
 | **OD-07** | Medición y optimización justificada (downscale, perfil release, notificaciones) | `checking` → `deciding` si hay bifurcación | Antes/después documentado; nada optimizado sin número |
 | **OD-08** | Pruebas y release: fmt/clippy/tests, soak 4 h, CI, binario | `checking` → `closing` | S8–S12 con evidencia |
-| **OD-09** | **Siguiente fase (no MVP):** adoptar el sistema de diseño de `gentle-shell-gpui` y sus iconos; medir el coste en binario | `planning` | Tokens alineados, iconos servidos sin empaquetar el Kit completo, presupuesto re-medido |
+| **OD-09** | **Siguiente fase:** UI shadcn oscura, controles con hover/active, medidor de nivel con umbral y composición de `gentle-shell-gpui` ([plan](2026-11-25-ui-shadcn.md)) | `implementing` → `checking` | Sin recortes, medidor en vivo, CI verde y presupuesto de binario re-medido |
 
 ## Verificación
 
@@ -221,3 +221,4 @@ Formato: una línea por slice, con el comando real y su salida. Sin salida no ha
 - **L5.** Aprobado para implementar. D5: sin builds locales; CI como único verificador. Se auditaron las firmas reales de `gpui-pre 0.3.14`, `cpal 0.18.2`, `rfd 0.18.0` y `windows 0.62.2` antes de escribir código.
 - **L6.** Pedido humano (2026-11-25): en la siguiente fase, usar los iconos de `gentle-shell-gpui` y alinear el sistema de diseño con el suyo. Queda como **OD-09**, fuera del MVP, para no mezclar alcance antes de cerrar la verificación del CI.
 - **L7.** CI en verde (run `45727850849`). El humano descargará el `.exe` y hará la prueba funcional; por eso se detiene la medición automática y no se registran CPU/GPU/arranque sin número real.
+- **L8.** Prueba humana del `.exe` (2026-11-25): la UI se ve mal, se corta por abajo y la sensibilidad no explica el umbral. Se abre **OD-09** con plan propio (`2026-11-25-ui-shadcn.md`). No se toca el VAD ni el esquema; el audio solo gana una lectura atómica del nivel para el medidor.

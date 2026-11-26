@@ -35,8 +35,9 @@ Al no haber imágenes configuradas, se abre la ventana de ajustes:
 1. En **Avatar**, elige el PNG de boca cerrada y el de boca abierta.
 2. En **Micrófono**, elige el dispositivo (o deja el predeterminado del
    sistema) y comprueba que el estado diga *Escuchando*.
-3. Ajusta **Sensibilidad** hasta que la etiqueta cambie entre `SILENCIO` y
-   `HABLANDO` con tu voz normal, sin abrirse con ruido de fondo.
+3. En **Nivel de audio**, habla y observa el medidor: la línea ámbar es el
+   umbral. Ajusta **Sensibilidad** hasta que la etiqueta cambie entre
+   `SILENCIO` y `HABLANDO` con tu voz normal, sin abrirse con ruido de fondo.
 4. Ajusta el **Tamaño** y, si quieres, desactiva **Siempre visible**.
 
 Los cambios se guardan solos en `%APPDATA%\pngtuber-lite\settings.json`, junto
@@ -46,8 +47,8 @@ a una copia de los PNG en `avatars\`.
 
 - **Arrastrar:** botón izquierdo sobre el avatar.
 - **Abrir ajustes:** clic derecho sobre el avatar.
-- **Cerrar ajustes:** la X de la ventana; el avatar sigue funcionando.
-- **Salir del todo:** botón **Salir** en ajustes.
+- **Cerrar ajustes:** la X de la cabecera; el avatar sigue funcionando.
+- **Salir del todo:** botón **Salir de la app** en el pie de ajustes.
 
 ## Presupuesto
 

@@ -1,13 +1,18 @@
-//! Ventana de ajustes: avatar, micrófono, sensibilidad y ventana.
+//! Ventana de ajustes: avatar, micrófono, nivel de audio y ventana.
 //!
-//! Sin botón "Guardar": cada control confirma su cambio, lo persiste y avisa
-//! al resto de la aplicación. Todos los controles son piezas propias de
-//! `shared::ui`; no hay componentes de terceros.
+//! La composición sigue a `gentle-shell-gpui`: cabecera fija, cuerpo con
+//! scroll y pie fijo. Sin botón "Guardar": cada control confirma su cambio, lo
+//! persiste y avisa al resto de la aplicación. Todos los controles son piezas
+//! de `shared::ui`; no hay componentes de terceros.
 
+use std::time::Duration;
+
+use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
 use crate::app::AppState;
 use crate::features::audio::AudioStatus;
+use crate::features::audio::Vad;
 use crate::features::audio::devices::DeviceEntry;
 use crate::features::avatar::{self, AvatarSlot};
 use crate::features::settings::Settings;
@@ -15,17 +20,66 @@ use crate::shared::ui;
 use crate::window;
 
 const MAX_DEVICE_ROWS: usize = 4;
+/// Escala visible del medidor, en dBFS.
+const METER_FLOOR_DB: f32 = -60.0;
+/// Refresco del medidor mientras la ventana de ajustes existe.
+const METER_FRAME: Duration = Duration::from_millis(45);
 
 pub struct SettingsView {
     state: Entity<AppState>,
+    body_scroll: ScrollHandle,
+    /// Nivel suavizado que se dibuja; el audio solo guarda el instantáneo.
+    display_db: f32,
     #[allow(dead_code)]
     observed: Subscription,
+    #[allow(dead_code)]
+    ticker: Task<()>,
 }
 
 impl SettingsView {
     pub fn new(state: Entity<AppState>, cx: &mut Context<Self>) -> Self {
         let observed = cx.observe(&state, |_, _, cx| cx.notify());
-        Self { state, observed }
+        let ticker = cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor().timer(METER_FRAME).await;
+                let alive = this
+                    .update(cx, |view, cx| {
+                        let instant = view.state.read(cx).level_db();
+                        if view.push_level(instant) {
+                            cx.notify();
+                        }
+                    })
+                    .is_ok();
+                if !alive {
+                    break;
+                }
+            }
+        });
+
+        Self {
+            state,
+            body_scroll: ScrollHandle::new(),
+            display_db: METER_FLOOR_DB,
+            observed,
+            ticker,
+        }
+    }
+
+    /// Suaviza la caída del medidor; las subidas se ven al instante.
+    /// Devuelve `true` solo cuando el valor dibujado cambió lo suficiente.
+    fn push_level(&mut self, instant: f32) -> bool {
+        let instant = if instant.is_finite() {
+            instant.clamp(METER_FLOOR_DB, 0.0)
+        } else {
+            METER_FLOOR_DB
+        };
+        let previous = self.display_db;
+        if instant >= self.display_db {
+            self.display_db = instant;
+        } else {
+            self.display_db += (instant - self.display_db) * 0.22;
+        }
+        (self.display_db - previous).abs() > 0.05
     }
 
     fn update_state(&self, cx: &mut Context<Self>, update: impl FnOnce(&mut AppState)) {
@@ -81,36 +135,64 @@ impl SettingsView {
             .child(
                 div()
                     .flex()
-                    .flex_col()
-                    .gap_2()
+                    .flex_row()
+                    .items_center()
+                    .gap_3()
                     .child(
                         div()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .w(px(32.))
+                            .h(px(32.))
+                            .rounded_md()
+                            .bg(ui::primary())
                             .text_sm()
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(ui::fg())
-                            .child("PNGTuber Lite"),
+                            .font_weight(FontWeight::BOLD)
+                            .text_color(ui::primary_fg())
+                            .child("P"),
                     )
-                    .child(ui::hint("Overlay transparente · VAD por RMS")),
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_1()
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .font_weight(FontWeight::SEMIBOLD)
+                                    .text_color(ui::fg())
+                                    .child("PNGTuber Lite"),
+                            )
+                            .child(ui::hint("Overlay transparente · detección por RMS")),
+                    ),
             )
-            .child(ui::danger_button("Salir").on_mouse_down(
+            .child(ui::icon_button("×").on_mouse_down(
                 MouseButton::Left,
-                cx.listener(|_, _: &MouseDownEvent, _, cx| cx.quit()),
+                cx.listener(|_, _: &MouseDownEvent, window, _| window.remove_window()),
             ))
     }
 
     fn avatar_section(&self, settings: &Settings, cx: &mut Context<Self>) -> Div {
-        ui::card()
-            .child(ui::section_label("Avatar"))
-            .child(Self::avatar_row(
-                AvatarSlot::Closed,
-                settings.avatar.closed.as_deref(),
-                cx,
-            ))
-            .child(Self::avatar_row(
-                AvatarSlot::Open,
-                settings.avatar.open.as_deref(),
-                cx,
-            ))
+        ui::section(
+            "Avatar",
+            "Los dos estados PNG que se alternan cuando hablas.",
+        )
+        .child(
+            ui::card()
+                .p(px(6.))
+                .child(Self::avatar_row(
+                    AvatarSlot::Closed,
+                    settings.avatar.closed.as_deref(),
+                    cx,
+                ))
+                .child(ui::divider())
+                .child(Self::avatar_row(
+                    AvatarSlot::Open,
+                    settings.avatar.open.as_deref(),
+                    cx,
+                )),
+        )
     }
 
     fn avatar_row(slot: AvatarSlot, current: Option<&str>, cx: &mut Context<Self>) -> Div {
@@ -118,21 +200,47 @@ impl SettingsView {
             .map(|path| path.rsplit('/').next().unwrap_or(path).to_string())
             .unwrap_or_else(|| "Sin imagen".to_string());
 
-        div()
-            .flex()
-            .flex_row()
-            .items_center()
-            .justify_between()
-            .gap_3()
+        ui::row()
             .child(
                 div()
                     .flex()
-                    .flex_col()
-                    .gap_2()
-                    .child(ui::label(slot.title()))
-                    .child(div().text_xs().text_color(ui::faint()).child(file)),
+                    .flex_row()
+                    .items_center()
+                    .gap_3()
+                    .flex_1()
+                    .min_w_0()
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .w(px(36.))
+                            .h(px(36.))
+                            .rounded_md()
+                            .bg(ui::muted_bg())
+                            .border_1()
+                            .border_color(ui::border())
+                            .text_xs()
+                            .text_color(ui::faint())
+                            .child("PNG"),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_1()
+                            .min_w_0()
+                            .child(ui::label(slot.title()))
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(ui::faint())
+                                    .truncate()
+                                    .child(file),
+                            ),
+                    ),
             )
-            .child(ui::button("Elegir…").on_mouse_down(
+            .child(ui::button("Elegir").on_mouse_down(
                 MouseButton::Left,
                 cx.listener(move |this, _: &MouseDownEvent, _window, cx| this.pick_png(slot, cx)),
             ))
@@ -142,14 +250,13 @@ impl SettingsView {
         settings: &Settings,
         devices: &[DeviceEntry],
         devices_error: Option<&str>,
-        mouth_open: bool,
         status: &AudioStatus,
-        error: Option<&str>,
+        audio_error: Option<&str>,
         cx: &mut Context<Self>,
     ) -> Div {
         let enabled = settings.audio.enabled;
 
-        let mut device_list = div().flex().flex_col().gap_2();
+        let mut device_list = div().flex().flex_col().p(px(6.));
         device_list = device_list.child(Self::device_row(
             None,
             "Predeterminado del sistema".to_string(),
@@ -166,35 +273,57 @@ impl SettingsView {
             ));
         }
         if devices.is_empty() {
-            device_list = device_list.child(div().text_xs().text_color(ui::faint()).child(
-                if devices_error.is_some() {
-                    "Sin micrófonos"
-                } else {
-                    "Buscando micrófonos…"
-                },
-            ));
+            device_list = device_list.child(
+                div()
+                    .px(px(10.))
+                    .py(px(8.))
+                    .text_xs()
+                    .text_color(ui::faint())
+                    .child(if devices_error.is_some() {
+                        "No se encontraron micrófonos."
+                    } else {
+                        "Buscando micrófonos…"
+                    }),
+            );
         }
 
         let (status_text, status_color) = match status {
             AudioStatus::Stopped => ("Detección desactivada".to_string(), ui::faint()),
             AudioStatus::Starting => ("Conectando con el micrófono…".to_string(), ui::warning()),
-            AudioStatus::Running(name) => (format!("Escuchando: {name}"), ui::success()),
-            AudioStatus::Error(message) => (format!("Error: {message}"), ui::danger()),
-        };
-
-        let mouth_color = if mouth_open {
-            ui::accent()
-        } else {
-            ui::faint()
-        };
-        let mouth_bg = if mouth_open {
-            ui::selected()
-        } else {
-            ui::well()
+            AudioStatus::Running(name) => (name.clone(), ui::success()),
+            AudioStatus::Error(message) => (message.clone(), ui::danger()),
         };
 
         let mut card = ui::card()
-            .child(ui::section_label("Micrófono"))
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .justify_between()
+                    .gap_4()
+                    .p(px(16.))
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_1()
+                            .child(ui::label("Detección de voz"))
+                            .child(ui::hint("Abre la boca cuando superas el umbral.")),
+                    )
+                    .child(ui::switch(enabled).on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, _: &MouseDownEvent, _, cx| {
+                            let next = !this.state.read(cx).settings.audio.enabled;
+                            this.update_state(cx, move |state| {
+                                state.set_audio_enabled(next);
+                            });
+                        }),
+                    )),
+            )
+            .child(ui::divider())
+            .child(device_list)
+            .child(ui::divider())
             .child(
                 div()
                     .flex()
@@ -202,65 +331,52 @@ impl SettingsView {
                     .items_center()
                     .justify_between()
                     .gap_3()
-                    .child(ui::label("Detección de voz"))
+                    .px(px(16.))
+                    .py(px(12.))
                     .child(
-                        ui::button(if enabled { "Activada" } else { "Desactivada" }).on_mouse_down(
-                            MouseButton::Left,
-                            cx.listener(|this, _: &MouseDownEvent, _, cx| {
-                                let next = !this.state.read(cx).settings.audio.enabled;
-                                this.update_state(cx, move |state| {
-                                    state.set_audio_enabled(next);
-                                });
-                            }),
-                        ),
-                    ),
-            )
-            .child(device_list);
-
-        card = card.child(
-            div()
-                .flex()
-                .flex_row()
-                .items_center()
-                .justify_between()
-                .gap_3()
-                .child(
-                    div()
-                        .flex()
-                        .flex_row()
-                        .items_center()
-                        .gap_2()
-                        .child(
-                            div()
-                                .px(px(8.))
-                                .py(px(2.))
-                                .rounded_md()
-                                .bg(mouth_bg)
-                                .text_xs()
-                                .text_color(mouth_color)
-                                .child(if mouth_open { "HABLANDO" } else { "SILENCIO" }),
-                        )
-                        .child(div().text_xs().text_color(status_color).child(status_text)),
-                )
-                .child(ui::button("Actualizar").on_mouse_down(
-                    MouseButton::Left,
-                    cx.listener(|this, _: &MouseDownEvent, _, cx| this.refresh_devices(cx)),
-                )),
-        );
-
-        if let Some(message) = error.or(devices_error) {
-            card = card.child(
-                div()
-                    .text_xs()
-                    .text_color(ui::danger())
-                    .child(message.to_string()),
+                        div()
+                            .flex()
+                            .flex_row()
+                            .items_center()
+                            .gap_2()
+                            .min_w_0()
+                            .child(ui::status_dot(status_color))
+                            .child(
+                                div()
+                                    .min_w_0()
+                                    .truncate()
+                                    .text_xs()
+                                    .text_color(status_color)
+                                    .child(status_text),
+                            ),
+                    )
+                    .child(ui::ghost_button("Actualizar").on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, _: &MouseDownEvent, _, cx| this.refresh_devices(cx)),
+                    )),
             );
+
+        if let Some(message) = audio_error {
+            card = card.child(ui::notice(message.to_string(), ui::warning()).child(
+                ui::ghost_button("Descartar").on_mouse_down(
+                    MouseButton::Left,
+                    cx.listener(|this, _: &MouseDownEvent, _, cx| {
+                        this.update_state(cx, |state| state.clear_audio_error());
+                    }),
+                ),
+            ));
+        }
+
+        if let Some(message) = devices_error {
+            card = card.child(ui::notice(message.to_string(), ui::danger()));
         }
 
         if devices.len() > MAX_DEVICE_ROWS {
             let hidden = devices.len() - MAX_DEVICE_ROWS;
             card = card.child(
                 div()
+                    .px(px(16.))
+                    .pb(px(12.))
                     .text_xs()
                     .text_color(ui::faint())
                     .child(format!("{hidden} micrófonos más no listados")),
@@ -274,15 +390,27 @@ impl SettingsView {
         ui::list_row(selected)
             .child(
                 div()
-                    .text_sm()
-                    .text_color(if selected { ui::fg() } else { ui::muted() })
-                    .child(name),
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap_3()
+                    .flex_1()
+                    .min_w_0()
+                    .child(ui::radio(selected))
+                    .child(
+                        div()
+                            .min_w_0()
+                            .truncate()
+                            .text_sm()
+                            .text_color(if selected { ui::fg() } else { ui::muted() })
+                            .child(name),
+                    ),
             )
-            .child(div().text_xs().text_color(ui::accent()).child(if selected {
-                "ACTIVO"
+            .child(if selected {
+                ui::chip("ACTIVO", ui::success())
             } else {
-                ""
-            }))
+                div()
+            })
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(move |this, _: &MouseDownEvent, _, cx| {
@@ -292,54 +420,169 @@ impl SettingsView {
             )
     }
 
-    fn sensitivity_section(&self, settings: &Settings, cx: &mut Context<Self>) -> Div {
+    fn audio_level_section(
+        &self,
+        settings: &Settings,
+        status: &AudioStatus,
+        mouth_open: bool,
+        cx: &mut Context<Self>,
+    ) -> Div {
         let value = settings.audio.sensitivity;
+        let threshold = Vad::threshold_db(value);
+        let running = matches!(status, AudioStatus::Running(_));
+        let level = if running {
+            db_fraction(self.display_db)
+        } else {
+            0.0
+        };
+        let threshold_fraction = db_fraction(threshold);
+        let db_text = if running {
+            format_db(self.display_db)
+        } else {
+            "—".to_string()
+        };
+        let (state_text, state_color) = match status {
+            AudioStatus::Running(_) if mouth_open => ("HABLANDO", ui::success()),
+            AudioStatus::Running(_) => ("SILENCIO", ui::faint()),
+            AudioStatus::Starting => ("CONECTANDO", ui::warning()),
+            AudioStatus::Error(_) => ("ERROR", ui::danger()),
+            AudioStatus::Stopped => ("APAGADO", ui::faint()),
+        };
+
         let lower = value.saturating_sub(5);
         let higher = value.saturating_add(5).min(100);
 
-        ui::card()
-            .child(ui::section_label("Sensibilidad"))
-            .child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .gap_3()
-                    .child(ui::button("−").on_mouse_down(
-                        MouseButton::Left,
-                        cx.listener(move |this, _: &MouseDownEvent, _, cx| {
-                            this.update_state(cx, move |state| {
-                                state.set_sensitivity(lower);
-                            });
-                        }),
-                    ))
+        let mut presets = ui::segmented();
+        for (label, preset) in [("Baja", 25_u8), ("Media", 55), ("Alta", 80)] {
+            presets = presets.child(ui::segment(label, value == preset).on_mouse_down(
+                MouseButton::Left,
+                cx.listener(move |this, _: &MouseDownEvent, _, cx| {
+                    this.update_state(cx, move |state| state.set_sensitivity(preset));
+                }),
+            ));
+        }
+
+        ui::section(
+            "Nivel de audio",
+            "El umbral marca el punto exacto en que se abre la boca.",
+        )
+        .child(
+            ui::card().child(
+                ui::card_body()
                     .child(
                         div()
-                            .flex_1()
-                            .text_sm()
-                            .text_color(ui::fg())
-                            .child(format!("{value} / 100")),
+                            .flex()
+                            .flex_row()
+                            .items_center()
+                            .justify_between()
+                            .gap_3()
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .gap_1()
+                                    .child(ui::label("Nivel del micrófono"))
+                                    .child(ui::hint(
+                                        "Se actualiza en vivo mientras esta ventana está abierta.",
+                                    )),
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .items_end()
+                                    .gap_2()
+                                    .child(
+                                        div()
+                                            .text_lg()
+                                            .font_weight(FontWeight::SEMIBOLD)
+                                            .text_color(if mouth_open {
+                                                ui::success()
+                                            } else {
+                                                ui::fg()
+                                            })
+                                            .child(db_text),
+                                    )
+                                    .child(ui::chip(state_text, state_color)),
+                            ),
                     )
-                    .child(ui::button("+").on_mouse_down(
-                        MouseButton::Left,
-                        cx.listener(move |this, _: &MouseDownEvent, _, cx| {
-                            this.update_state(cx, move |state| {
-                                state.set_sensitivity(higher);
-                            });
-                        }),
-                    )),
-            )
-            .child(
-                div()
-                    .h(px(6.))
-                    .w_full()
-                    .rounded_full()
-                    .bg(ui::well())
-                    .child(ui::meter_fill(value)),
-            )
-            .child(ui::hint(
-                "Baja si la boca se abre sola; sube si no reacciona a tu voz.",
-            ))
+                    .child(ui::meter(level, threshold_fraction, mouth_open))
+                    .child(
+                        div()
+                            .flex()
+                            .flex_row()
+                            .items_center()
+                            .justify_between()
+                            .gap_2()
+                            .child(ui::hint("−60 dB"))
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_row()
+                                    .items_center()
+                                    .gap_1()
+                                    .child(ui::status_dot(ui::warning()))
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .text_color(ui::warning())
+                                            .child(format!("Umbral {}", format_db(threshold))),
+                                    ),
+                            )
+                            .child(ui::hint("0 dB")),
+                    )
+                    .child(ui::divider())
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_3()
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_row()
+                                    .items_center()
+                                    .justify_between()
+                                    .gap_3()
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .flex_col()
+                                            .gap_1()
+                                            .child(ui::label("Sensibilidad"))
+                                            .child(ui::hint(
+                                                "Baja si la boca se abre sola; sube si no reacciona.",
+                                            )),
+                                    )
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .flex_row()
+                                            .items_center()
+                                            .gap_2()
+                                            .child(ui::icon_button("−").on_mouse_down(
+                                                MouseButton::Left,
+                                                cx.listener(move |this, _: &MouseDownEvent, _, cx| {
+                                                    this.update_state(cx, move |state| {
+                                                        state.set_sensitivity(lower);
+                                                    });
+                                                }),
+                                            ))
+                                            .child(ui::value_badge(format!("{value} / 100")))
+                                            .child(ui::icon_button("+").on_mouse_down(
+                                                MouseButton::Left,
+                                                cx.listener(move |this, _: &MouseDownEvent, _, cx| {
+                                                    this.update_state(cx, move |state| {
+                                                        state.set_sensitivity(higher);
+                                                    });
+                                                }),
+                                            )),
+                                    ),
+                            )
+                            .child(presets),
+                    ),
+            ),
+        )
     }
 
     fn window_section(&self, settings: &Settings, cx: &mut Context<Self>) -> Div {
@@ -348,72 +591,108 @@ impl SettingsView {
         let taller = (height + 40.0).min(900.0);
         let topmost = settings.window.always_on_top;
 
-        ui::card()
-            .child(ui::section_label("Ventana"))
-            .child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .justify_between()
-                    .gap_3()
-                    .child(ui::label("Tamaño"))
+        ui::section(
+            "Ventana",
+            "Tamaño del avatar y comportamiento sobre el escritorio.",
+        )
+        .child(
+            ui::card().child(
+                ui::card_body()
                     .child(
                         div()
                             .flex()
                             .flex_row()
                             .items_center()
-                            .gap_2()
-                            .child(ui::button("−").on_mouse_down(
-                                MouseButton::Left,
-                                cx.listener(move |this, _: &MouseDownEvent, _, cx| {
-                                    this.apply_height(shorter, cx)
-                                }),
-                            ))
+                            .justify_between()
+                            .gap_3()
                             .child(
                                 div()
-                                    .text_sm()
-                                    .text_color(ui::fg())
-                                    .child(format!("{} px", height.round() as i32)),
+                                    .flex()
+                                    .flex_col()
+                                    .gap_1()
+                                    .child(ui::label("Tamaño"))
+                                    .child(ui::hint("La proporción se conserva.")),
                             )
-                            .child(ui::button("+").on_mouse_down(
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_row()
+                                    .items_center()
+                                    .gap_2()
+                                    .child(ui::icon_button("−").on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(move |this, _: &MouseDownEvent, _, cx| {
+                                            this.apply_height(shorter, cx)
+                                        }),
+                                    ))
+                                    .child(ui::value_badge(format!("{} px", height.round() as i32)))
+                                    .child(ui::icon_button("+").on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(move |this, _: &MouseDownEvent, _, cx| {
+                                            this.apply_height(taller, cx)
+                                        }),
+                                    )),
+                            ),
+                    )
+                    .child(ui::divider())
+                    .child(
+                        div()
+                            .flex()
+                            .flex_row()
+                            .items_center()
+                            .justify_between()
+                            .gap_4()
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .gap_1()
+                                    .child(ui::label("Siempre visible"))
+                                    .child(ui::hint(
+                                        "Mantiene el avatar por encima de las demás ventanas.",
+                                    )),
+                            )
+                            .child(ui::switch(topmost).on_mouse_down(
                                 MouseButton::Left,
-                                cx.listener(move |this, _: &MouseDownEvent, _, cx| {
-                                    this.apply_height(taller, cx)
+                                cx.listener(|this, _: &MouseDownEvent, _, cx| {
+                                    let next = !this.state.read(cx).settings.window.always_on_top;
+                                    this.update_state(cx, move |state| {
+                                        state.set_always_on_top(next);
+                                    });
+                                    this.apply_topmost(next, cx);
                                 }),
                             )),
-                    ),
-            )
+                    )
+                    .child(ui::hint(
+                        "Clic derecho sobre el avatar para volver a abrir estos ajustes.",
+                    )),
+            ),
+        )
+    }
+
+    fn footer(&self, storage_error: Option<&str>, cx: &mut Context<Self>) -> Div {
+        let mut footer = div()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .flex_shrink_0()
+            .px(px(24.))
+            .py(px(14.))
+            .border_t_1()
+            .border_color(ui::border())
             .child(
                 div()
                     .flex()
                     .flex_row()
                     .items_center()
                     .justify_between()
-                    .gap_3()
-                    .child(ui::label("Siempre visible"))
-                    .child(
-                        ui::button(if topmost { "Activado" } else { "Desactivado" }).on_mouse_down(
-                            MouseButton::Left,
-                            cx.listener(|this, _: &MouseDownEvent, _, cx| {
-                                let next = !this.state.read(cx).settings.window.always_on_top;
-                                this.update_state(cx, move |state| {
-                                    state.set_always_on_top(next);
-                                });
-                                this.apply_topmost(next, cx);
-                            }),
-                        ),
-                    ),
-            )
-            .child(ui::hint(
-                "Clic derecho sobre el avatar para volver a abrir estos ajustes.",
-            ))
-    }
-
-    fn footer(&self, storage_error: Option<&str>) -> Div {
-        let mut footer = div().flex().flex_col().gap_2().child(ui::hint(
-            "Los cambios se guardan solos. Cerrar esta ventana no cierra el avatar.",
-        ));
+                    .gap_4()
+                    .child(ui::hint("Los cambios se guardan automáticamente."))
+                    .child(ui::destructive_button("Salir de la app").on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|_, _: &MouseDownEvent, _, cx| cx.quit()),
+                    )),
+            );
 
         if let Some(message) = storage_error {
             footer = footer.child(
@@ -423,8 +702,19 @@ impl SettingsView {
                     .child(message.to_string()),
             );
         }
+
         footer
     }
+}
+
+/// Lleva un nivel en dBFS a la escala visible 0..=1.
+fn db_fraction(db: f32) -> f32 {
+    ((db.clamp(METER_FLOOR_DB, 0.0) - METER_FLOOR_DB) / -METER_FLOOR_DB).clamp(0.0, 1.0)
+}
+
+/// Formatea dBFS con el signo menos tipográfico.
+fn format_db(db: f32) -> String {
+    format!("{db:.0} dB").replace('-', "−")
 }
 
 impl Render for SettingsView {
@@ -446,35 +736,35 @@ impl Render for SettingsView {
             .size_full()
             .flex()
             .flex_col()
-            .bg(ui::panel())
+            .bg(ui::window_bg())
             .text_color(ui::fg())
             .child(self.header(cx))
             .child(
                 div()
-                    .flex()
-                    .flex_col()
-                    .gap_3()
-                    .p(px(20.))
+                    .id("settings-body")
                     .flex_1()
-                    .child(self.avatar_section(&settings, cx))
-                    .child(Self::audio_section(
-                        &settings,
-                        &devices,
-                        devices_error.as_deref(),
-                        mouth_open,
-                        &status,
-                        audio_error.as_deref(),
-                        cx,
-                    ))
+                    .min_h_0()
+                    .overflow_y_scroll()
+                    .track_scroll(&self.body_scroll)
                     .child(
                         div()
                             .flex()
-                            .flex_row()
-                            .gap_3()
-                            .child(self.sensitivity_section(&settings, cx).flex_1())
-                            .child(self.window_section(&settings, cx).flex_1()),
-                    )
-                    .child(self.footer(storage_error.as_deref())),
+                            .flex_col()
+                            .gap_6()
+                            .p(px(24.))
+                            .child(self.avatar_section(&settings, cx))
+                            .child(Self::audio_section(
+                                &settings,
+                                &devices,
+                                devices_error.as_deref(),
+                                &status,
+                                audio_error.as_deref(),
+                                cx,
+                            ))
+                            .child(self.audio_level_section(&settings, &status, mouth_open, cx))
+                            .child(self.window_section(&settings, cx)),
+                    ),
             )
+            .child(self.footer(storage_error.as_deref(), cx))
     }
 }

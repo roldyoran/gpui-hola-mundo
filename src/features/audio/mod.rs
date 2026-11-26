@@ -10,13 +10,20 @@ pub mod stream;
 pub mod vad;
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU8, AtomicU32, Ordering};
 
 use async_channel::{Receiver, Sender};
 
 use devices::DeviceEntry;
 
 pub use vad::Vad;
+
+/// Nivel en reposo: por debajo de cualquier señal real.
+const SILENCE_DB: f32 = f32::NEG_INFINITY;
+
+fn silent_level() -> u32 {
+    SILENCE_DB.to_bits()
+}
 
 /// Lo mínimo que el hilo de audio necesita saber de los ajustes.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -53,16 +60,20 @@ enum Command {
 /// Handle al hilo de audio. Se puede clonar el `Sender` internamente.
 pub struct AudioService {
     commands: Sender<Command>,
+    /// Último RMS en dBFS (bits de `f32`); la UI lo lee sin eventos.
+    level: Arc<AtomicU32>,
 }
 
 impl AudioService {
     /// Arranca el hilo y devuelve el handle para enviarle comandos.
     pub fn start(events: Sender<AudioEvent>) -> Self {
         let (commands, receiver) = async_channel::unbounded();
+        let level = Arc::new(AtomicU32::new(silent_level()));
+        let thread_level = level.clone();
         let _ = std::thread::Builder::new()
             .name("pngtuber-audio".to_string())
-            .spawn(move || run(receiver, events));
-        Self { commands }
+            .spawn(move || run(receiver, events, thread_level));
+        Self { commands, level }
     }
 
     /// Aplica una configuración completa (idempotente).
@@ -74,9 +85,14 @@ impl AudioService {
     pub fn refresh_devices(&self) {
         let _ = self.commands.try_send(Command::RefreshDevices);
     }
+
+    /// Nivel RMS instantáneo en dBFS; `−∞` cuando no hay captura.
+    pub fn level_db(&self) -> f32 {
+        f32::from_bits(self.level.load(Ordering::Relaxed))
+    }
 }
 
-fn run(commands: Receiver<Command>, events: Sender<AudioEvent>) {
+fn run(commands: Receiver<Command>, events: Sender<AudioEvent>, level: Arc<AtomicU32>) {
     let sensitivity = Arc::new(AtomicU8::new(55));
     let mut active: Option<stream::ActiveStream> = None;
     let mut current: Option<AudioConfig> = None;
@@ -108,6 +124,7 @@ fn run(commands: Receiver<Command>, events: Sender<AudioEvent>) {
             if active.take().is_some() {
                 let _ = events.try_send(AudioEvent::Mouth(false));
             }
+            level.store(silent_level(), Ordering::Relaxed);
             let _ = events.try_send(AudioEvent::Status(AudioStatus::Stopped));
             current = Some(config);
             continue;
@@ -120,16 +137,18 @@ fn run(commands: Receiver<Command>, events: Sender<AudioEvent>) {
 
         if active.is_none() || device_changed || was_disabled {
             active = None;
+            level.store(silent_level(), Ordering::Relaxed);
             let _ = events.try_send(AudioEvent::Mouth(false));
             let _ = events.try_send(AudioEvent::Status(AudioStatus::Starting));
 
-            match stream::open(&config, sensitivity.clone(), events.clone()) {
+            match stream::open(&config, sensitivity.clone(), level.clone(), events.clone()) {
                 Ok(opened) => {
                     let name = opened.device_name.clone();
                     active = Some(opened);
                     let _ = events.try_send(AudioEvent::Status(AudioStatus::Running(name)));
                 }
                 Err(message) => {
+                    level.store(silent_level(), Ordering::Relaxed);
                     let _ = events.try_send(AudioEvent::Status(AudioStatus::Error(message)));
                 }
             }
