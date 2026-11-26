@@ -9,8 +9,11 @@ RMS, histéresis y dos imágenes.
 - Dos PNG (boca cerrada / boca abierta) con transparencia real por píxel.
 - VAD por umbral en dBFS con tiempos de ataque/cierre para no parpadear.
 - Selección de micrófono por identificador estable.
-- Ajustes con guardado automático; cerrarlos no cierra el avatar.
-- Arrastrable con el botón izquierdo; clic derecho reabre los ajustes.
+- Ajustes con guardado automático y **previsualización lateral**.
+- El overlay no se crea hasta pulsar **Mostrar**: el primer arranque no tapa
+  nada.
+- Arrastrable con el botón izquierdo, redimensionable por los bordes y con
+  pantalla completa; clic derecho reabre los ajustes.
 
 ## Requisitos
 
@@ -30,16 +33,19 @@ Actions.
 
 ## Primer arranque
 
-Al no haber imágenes configuradas, se abre la ventana de ajustes:
+La app abre solo la ventana de ajustes, con una **previsualización** del avatar
+en el panel derecho. Todavía no hay ninguna ventana transparente encima del
+escritorio.
 
-1. En **Avatar**, elige el PNG de boca cerrada y el de boca abierta.
+1. En **Avatar**, elige el PNG de boca cerrada y el de boca abierta. La
+   previsualización cambia al ritmo de tu voz.
 2. En **Micrófono**, elige el dispositivo (o deja el predeterminado del
    sistema) y comprueba que el estado diga *Escuchando*.
 3. En **Nivel de audio**, habla y observa el medidor: la línea ámbar es el
    umbral. Ajusta **Sensibilidad** hasta que la etiqueta cambie entre
    `SILENCIO` y `HABLANDO` con tu voz normal, sin abrirse con ruido de fondo.
-4. En **Ventana**, ajusta **Ancho** y **Alto** por separado y, si quieres,
-   desactiva **Siempre visible**.
+4. Pulsa **Mostrar overlay**. Ahí nace la ventana transparente real, en la
+   posición y el tamaño guardados.
 
 Los cambios se guardan solos en `%APPDATA%\pngtuber-lite\settings.json`, junto
 a una copia de los PNG en `avatars\`.
@@ -47,13 +53,16 @@ a una copia de los PNG en `avatars\`.
 ## Uso diario
 
 - **Arrastrar:** botón izquierdo sobre el avatar.
+- **Redimensionar:** arrastra cualquiera de los cuatro lados o esquinas.
+- **Pantalla completa:** botón **Pantalla completa** en la preview o en
+  **Ventana**; **Restaurar** devuelve el tamaño anterior. Con el overlay a
+  pantalla completa, un clic derecho lo restaura y abre ajustes.
 - **Abrir ajustes:** clic derecho sobre el avatar.
 - **Ajustes:** la ventana no se puede cerrar; usa **Minimizar** o
   **Maximizar** de Windows. Sigue en la barra de tareas.
-- **Ocultar de la pantalla sin cerrar:** en **Ventana**, botón **Ocultar**.
-  El avatar se aparca fuera de los monitores y **sigue renderizando para OBS**.
-  **Mostrar** lo devuelve a su última posición.
-- **Atajo:** `Ctrl+Alt+P` alterna visible/aparcado sin abrir ajustes.
+- **Ocultar de la pantalla sin cerrar:** en **Ventana** o en la preview, botón
+  **Ocultar**. El avatar se aparca fuera de los monitores y **sigue
+  renderizando para OBS**. **Mostrar** lo devuelve a su última posición.
 - **Salir del todo:** botón **Salir de la app** en el pie de ajustes.
 
 > Minimizar con la barra de Windows congela la captura de OBS. Para OBS usa
@@ -71,15 +80,15 @@ El piso de GPUI en Windows (hilo de VSync) es conocido y se declara.
 
 ```text
 src/
-├── main.rs          arranque y composición
+├── main.rs          arranque: solo ajustes, sin overlay
 ├── app.rs           AppState + bomba de eventos de audio
-├── window.rs        opciones de ventana y apertura de ajustes
-├── win32.rs         shim aislado: arrastre y siempre visible
+├── window.rs        opciones, apertura de ajustes y overlay perezoso
+├── win32.rs         shim aislado: arrastre, redimensionado y siempre visible
 ├── shared/ui.rs     tokens y controles propios
 └── features/
     ├── avatar/      carga, copia y decodificación de PNG
     ├── audio/       cpal, RMS y VAD puro con tests
-    └── settings/    esquema v1, escritura atómica y UI
+    └── settings/    esquema v1, escritura atómica, UI y preview
 ```
 
 ## Documentación

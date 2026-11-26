@@ -25,6 +25,16 @@ pub fn muted_bg() -> Rgba {
     rgba(0x18181bff)
 }
 
+/// Casilla oscura del tablero de transparencia de la preview.
+pub fn checker_dark() -> Rgba {
+    rgba(0x101012ff)
+}
+
+/// Casilla clara del tablero de transparencia de la preview.
+pub fn checker_light() -> Rgba {
+    rgba(0x18181bff)
+}
+
 /// `--accent`: hover de filas y botones fantasma.
 pub fn hover_bg() -> Rgba {
     rgba(0x27272aff)
@@ -174,6 +184,24 @@ pub fn screen_header() -> Div {
 
 pub fn divider() -> Div {
     div().h(px(1.)).w_full().bg(border_subtle())
+}
+
+/// Tablero de transparencia: filas y columnas alternas, sin imágenes.
+pub fn checkerboard(columns: usize, rows: usize) -> Div {
+    let mut board = div().flex().flex_col().w_full().h_full();
+    for row in 0..rows {
+        let mut line = div().flex().flex_row().flex_1();
+        for column in 0..columns {
+            let color = if (row + column) % 2 == 0 {
+                checker_dark()
+            } else {
+                checker_light()
+            };
+            line = line.child(div().flex_1().h_full().bg(color));
+        }
+        board = board.child(line);
+    }
+    board
 }
 
 /// Texto principal de un control.

@@ -11,6 +11,8 @@ sigue a `gentle-shell-gpui`. Todo sale de `src/shared/ui.rs`.
 | `window_bg` | `#09090b` | fondo de la ventana (`--background`) |
 | `card_bg` | `#0c0c0e` | tarjetas y fondos de botón secundario |
 | `muted_bg` | `#18181b` | filas, pozos, controles segmentados |
+| `checker_dark` | `#101012` | casilla oscura del tablero de la preview |
+| `checker_light` | `#18181b` | casilla clara del tablero de la preview |
 | `hover_bg` | `#27272a` | hover de filas y botones |
 | `active_bg` | `#3f3f46` | control pulsado |
 | `border` | `#27272a` | bordes de tarjetas y controles |
@@ -45,6 +47,11 @@ sigue a `gentle-shell-gpui`. Todo sale de `src/shared/ui.rs`.
 - `meter(fill, threshold, speaking)`: barra de 12 px con relleno, umbral ámbar
   y color de éxito al hablar.
 - `notice(message, color)`: aviso con tinte, descartable desde la vista.
+- `checkerboard(columns, rows)`: tablero 8×8 de la previsualización; deja ver
+  que el fondo del overlay es transparente.
+- Panel de preview: card de 300 px con cabecera, tablero de 248 px, estado
+  `HABLANDO`/`SILENCIO` y las acciones **Mostrar**, **Ocultar** y **Pantalla
+  completa**.
 
 ## Reglas
 
@@ -61,10 +68,14 @@ sigue a `gentle-shell-gpui`. Todo sale de `src/shared/ui.rs`.
    seleccionado no depende solo del color: usa radio, chip o texto.
 7. El overlay no pinta fondo: cualquier `bg` en su raíz rompería la
    transparencia.
-8. La ventana de ajustes tiene cabecera y pie fijos; el cuerpo es el único
-   `overflow_y_scroll`. Ninguna sección puede quedar cortada.
+8. La ventana de ajustes tiene cabecera y pie fijos. Con ≥ 950 px de ancho, el
+   contenido hace scroll a la izquierda y la preview queda fija a la derecha;
+   por debajo, la preview se apila arriba y todo comparte un solo scroll.
+   Ninguna sección puede quedar cortada.
 9. La ventana de ajustes no se cierra: `on_window_should_close` devuelve
    `false` y `SC_CLOSE` desaparece del menú del sistema. La única salida es
    **Salir de la app**.
-9. No hay animaciones de entrada. El medidor es el único movimiento y solo
-   corre mientras la ventana de ajustes existe.
+10. El overlay real no existe hasta pulsar **Mostrar**. La preview usa el mismo
+    `mouth_open` y los mismos PNG; nunca abre una ventana transparente.
+11. No hay animaciones de entrada. El medidor es el único movimiento y solo
+    corre mientras la ventana de ajustes existe.

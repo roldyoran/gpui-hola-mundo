@@ -191,6 +191,172 @@ impl SettingsView {
         )
     }
 
+    /// Panel lateral: tablero de transparencia, estado de boca y acciones.
+    fn preview_panel(&self, cx: &mut Context<Self>) -> Div {
+        let (settings, mouth_open, status, overlay_exists, parked, maximized, closed, open) = {
+            let state = self.state.read(cx);
+            (
+                state.settings.clone(),
+                state.mouth_open,
+                state.audio_status.clone(),
+                state.avatar_window.is_some(),
+                state.avatar_parked,
+                state.avatar_maximized,
+                state.avatar_closed.clone(),
+                state.avatar_open.clone(),
+            )
+        };
+        let image = if mouth_open { open } else { closed };
+        let (state_text, state_color) = match &status {
+            AudioStatus::Running(_) if mouth_open => ("HABLANDO", ui::success()),
+            AudioStatus::Running(_) => ("SILENCIO", ui::faint()),
+            AudioStatus::Starting => ("CONECTANDO", ui::warning()),
+            AudioStatus::Error(_) => ("ERROR", ui::danger()),
+            AudioStatus::Stopped => ("APAGADO", ui::faint()),
+        };
+
+        let mut stage = div()
+            .relative()
+            .w_full()
+            .h(px(248.))
+            .rounded_md()
+            .overflow_hidden()
+            .border_1()
+            .border_color(ui::border())
+            .child(ui::checkerboard(8, 8));
+
+        let mut center = div()
+            .absolute()
+            .top(px(0.))
+            .left(px(0.))
+            .w_full()
+            .h_full()
+            .flex()
+            .items_center()
+            .justify_center()
+            .p(px(14.));
+        if let Some(image) = image {
+            center = center.child(img(image).w_full().h_full().object_fit(ObjectFit::Contain));
+        } else {
+            center = center.child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .items_center()
+                    .gap_2()
+                    .px(px(8.))
+                    .child(ui::section_label("sin PNG"))
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(ui::faint())
+                            .child("Elegí boca cerrada y boca abierta en la sección Avatar."),
+                    ),
+            );
+        }
+        stage = stage.child(center);
+
+        let mut actions = div().flex().flex_col().gap_2().w_full();
+        if overlay_exists {
+            actions = actions.child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .gap_2()
+                    .w_full()
+                    .child(
+                        ui::button("preview-hide", "Ocultar")
+                            .flex_1()
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(|this, _: &MouseDownEvent, _, cx| {
+                                    window::park_avatar(&this.state, cx);
+                                }),
+                            ),
+                    )
+                    .child(
+                        ui::primary_button("preview-show", "Mostrar")
+                            .flex_1()
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(|this, _: &MouseDownEvent, _, cx| {
+                                    window::show_avatar(&this.state, cx);
+                                }),
+                            ),
+                    ),
+            );
+            actions = actions.child(
+                ui::button(
+                    "preview-fullscreen",
+                    if maximized {
+                        "Restaurar tamaño"
+                    } else {
+                        "Pantalla completa"
+                    },
+                )
+                .w_full()
+                .on_mouse_down(
+                    MouseButton::Left,
+                    cx.listener(move |this, _: &MouseDownEvent, _, cx| {
+                        window::set_avatar_fullscreen(&this.state, !maximized, cx);
+                    }),
+                ),
+            );
+        } else {
+            actions = actions.child(
+                ui::primary_button("preview-show", "Mostrar overlay")
+                    .w_full()
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, _: &MouseDownEvent, _, cx| {
+                            window::show_avatar_overlay(&this.state, cx);
+                        }),
+                    ),
+            );
+        }
+
+        let status_hint = if !overlay_exists {
+            "Todavía no está en pantalla: nada tapa tus ventanas."
+        } else if parked {
+            "Oculto fuera del escritorio; OBS lo sigue capturando."
+        } else {
+            "En pantalla. Clic derecho sobre el avatar para volver aquí."
+        };
+
+        ui::card()
+            .w(px(300.))
+            .flex_shrink_0()
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .justify_between()
+                    .gap_3()
+                    .px(px(14.))
+                    .py(px(12.))
+                    .child(ui::label("Vista previa"))
+                    .child(ui::chip(state_text, state_color)),
+            )
+            .child(div().px(px(14.)).child(stage))
+            .child(ui::divider())
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap_3()
+                    .p(px(14.))
+                    .child(ui::hint(status_hint))
+                    .child(actions)
+                    .child(ui::divider())
+                    .child(ui::hint(format!(
+                        "{} × {} px · arrastrá los bordes del avatar para cambiar el tamaño.",
+                        settings.window.width.round() as i32,
+                        settings.window.height.round() as i32,
+                    ))),
+            )
+    }
+
     fn avatar_section(&self, settings: &Settings, cx: &mut Context<Self>) -> Div {
         ui::section(
             "Avatar",
@@ -676,6 +842,7 @@ impl SettingsView {
         let shorter = (height - 40.0).max(120.0);
         let taller = (height + 40.0).min(900.0);
         let topmost = settings.window.always_on_top;
+        let maximized = self.state.read(cx).avatar_maximized;
 
         ui::section("Ventana", "Tamaño libre y visibilidad para OBS.").child(
             ui::card().child(
@@ -715,12 +882,13 @@ impl SettingsView {
                             .gap_2()
                             .child(ui::label("En mi pantalla"))
                             .child(ui::hint(
-                                "Oculto sigue renderizando para OBS. Atajo: Ctrl+Alt+P.",
+                                "Oculto sigue renderizando para OBS; Mostrar lo devuelve o lo crea.",
                             ))
                             .child(
                                 div()
                                     .flex()
                                     .flex_row()
+                                    .flex_wrap()
                                     .items_center()
                                     .gap_2()
                                     .child(ui::button("hide-avatar", "Ocultar").on_mouse_down(
@@ -734,6 +902,26 @@ impl SettingsView {
                                             MouseButton::Left,
                                             cx.listener(|this, _: &MouseDownEvent, _, cx| {
                                                 window::show_avatar(&this.state, cx);
+                                            }),
+                                        ),
+                                    )
+                                    .child(
+                                        ui::button(
+                                            "fullscreen-avatar",
+                                            if maximized {
+                                                "Restaurar"
+                                            } else {
+                                                "Pantalla completa"
+                                            },
+                                        )
+                                        .on_mouse_down(
+                                            MouseButton::Left,
+                                            cx.listener(move |this, _: &MouseDownEvent, _, cx| {
+                                                window::set_avatar_fullscreen(
+                                                    &this.state,
+                                                    !maximized,
+                                                    cx,
+                                                );
                                             }),
                                         ),
                                     ),
@@ -772,7 +960,7 @@ impl SettingsView {
                             )),
                     )
                     .child(ui::hint(
-                        "Clic derecho sobre el avatar para volver a abrir estos ajustes.",
+                        "Arrastrá los bordes del avatar para redimensionarlo. Clic derecho para volver aquí.",
                     )),
             ),
         )
@@ -830,7 +1018,7 @@ fn format_db(db: f32) -> String {
 }
 
 impl Render for SettingsView {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let (settings, mouth_open, status, audio_error, devices, devices_error, storage_error) = {
             let state = self.state.read(cx);
             (
@@ -844,6 +1032,76 @@ impl Render for SettingsView {
             )
         };
 
+        let preview = self.preview_panel(cx);
+        let content = div()
+            .flex()
+            .flex_col()
+            .gap_6()
+            .w_full()
+            .max_w(px(760.))
+            .child(self.avatar_section(&settings, cx))
+            .child(Self::audio_section(
+                &settings,
+                &devices,
+                devices_error.as_deref(),
+                &status,
+                audio_error.as_deref(),
+                cx,
+            ))
+            .child(self.audio_level_section(&settings, &status, mouth_open, cx))
+            .child(self.window_section(&settings, cx));
+
+        // Con ancho suficiente, el contenido hace scroll a la izquierda y la
+        // preview queda fija a la derecha. En una ventana estrecha se apila
+        // arriba y todo comparte el mismo scroll.
+        let wide = f32::from(window.viewport_size().width) >= 950.0;
+        let body = if wide {
+            div()
+                .flex()
+                .flex_row()
+                .flex_1()
+                .min_h_0()
+                .w_full()
+                .child(
+                    div()
+                        .id("settings-body")
+                        .flex()
+                        .flex_1()
+                        .min_w_0()
+                        .min_h_0()
+                        .justify_center()
+                        .overflow_y_scroll()
+                        .track_scroll(&self.body_scroll)
+                        .child(div().w_full().p(px(24.)).child(content)),
+                )
+                .child(
+                    div()
+                        .id("preview-panel")
+                        .flex_shrink_0()
+                        .h_full()
+                        .overflow_y_scroll()
+                        .child(div().p(px(24.)).child(preview)),
+                )
+        } else {
+            div()
+                .id("settings-body")
+                .flex_1()
+                .min_h_0()
+                .overflow_y_scroll()
+                .track_scroll(&self.body_scroll)
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .items_center()
+                        .gap_6()
+                        .w_full()
+                        .p(px(24.))
+                        .child(preview)
+                        .child(content),
+                )
+        };
+
         div()
             .size_full()
             .flex()
@@ -851,35 +1109,7 @@ impl Render for SettingsView {
             .bg(ui::window_bg())
             .text_color(ui::fg())
             .child(self.header())
-            .child(
-                div()
-                    .id("settings-body")
-                    .flex_1()
-                    .min_h_0()
-                    .overflow_y_scroll()
-                    .track_scroll(&self.body_scroll)
-                    .child(
-                        div().flex().flex_col().items_center().p(px(24.)).child(
-                            div()
-                                .flex()
-                                .flex_col()
-                                .gap_6()
-                                .w_full()
-                                .max_w(px(760.))
-                                .child(self.avatar_section(&settings, cx))
-                                .child(Self::audio_section(
-                                    &settings,
-                                    &devices,
-                                    devices_error.as_deref(),
-                                    &status,
-                                    audio_error.as_deref(),
-                                    cx,
-                                ))
-                                .child(self.audio_level_section(&settings, &status, mouth_open, cx))
-                                .child(self.window_section(&settings, cx)),
-                        ),
-                    ),
-            )
+            .child(body)
             .child(self.footer(storage_error.as_deref(), cx))
     }
 }

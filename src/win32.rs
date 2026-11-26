@@ -1,10 +1,10 @@
-//! Shim Win32: arrastre manual, siempre visible, modo OBS y atajo global.
+//! Shim Win32: arrastre manual, redimensionado, siempre visible y modo OBS.
 //!
 //! GPUI 0.3.14 no expone arrastre ni `always_on_top` en Windows. Todo el
 //! `unsafe` de la aplicación vive en este módulo y tiene una justificación por
-//! llamada. El arrastre **no** usa el bucle modal de `WM_NCLBUTTONDOWN`:
-//! consulta el cursor y mueve con `SetWindowPos`, así un clic derecho nunca
-//! anida eventos de GPUI.
+//! llamada. Ni el arrastre ni el redimensionado usan el bucle modal de
+//! `WM_NCLBUTTONDOWN`: consultan el cursor y mueven con `SetWindowPos`, así un
+//! clic derecho nunca anida eventos de GPUI.
 //!
 //! En plataformas no-Windows todas las funciones son no-ops para que el resto
 //! del crate siga compilando.
@@ -23,31 +23,60 @@ pub enum DragStep {
     },
 }
 
+/// Borde o esquina desde la que se redimensiona el overlay.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ResizeEdge {
+    Left,
+    Right,
+    Top,
+    Bottom,
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+}
+
+impl ResizeEdge {
+    fn moves_left(self) -> bool {
+        matches!(self, Self::Left | Self::TopLeft | Self::BottomLeft)
+    }
+
+    fn moves_right(self) -> bool {
+        matches!(self, Self::Right | Self::TopRight | Self::BottomRight)
+    }
+
+    fn moves_top(self) -> bool {
+        matches!(self, Self::Top | Self::TopLeft | Self::TopRight)
+    }
+
+    fn moves_bottom(self) -> bool {
+        matches!(self, Self::Bottom | Self::BottomLeft | Self::BottomRight)
+    }
+}
+
 #[cfg(windows)]
 mod imp {
     use core::ffi::c_void;
     use std::sync::Mutex;
-    use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
+    use std::sync::atomic::{AtomicBool, Ordering};
 
     use gpui_kit::Window;
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
     use windows::Win32::Foundation::{HWND, POINT, RECT};
-    use windows::Win32::UI::Input::KeyboardAndMouse::{
-        GetAsyncKeyState, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT, RegisterHotKey, VK_LBUTTON, VK_P,
-    };
+    use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
     use windows::Win32::UI::WindowsAndMessaging::{
-        DeleteMenu, DrawMenuBar, GetCursorPos, GetMessageW, GetSystemMenu, GetSystemMetrics,
-        GetWindowRect, HWND_NOTOPMOST, HWND_TOPMOST, MF_BYCOMMAND, MSG, SC_CLOSE,
-        SM_CXVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SWP_NOACTIVATE, SWP_NOMOVE,
-        SWP_NOSIZE, SWP_NOZORDER, SetWindowPos, WM_HOTKEY,
+        DeleteMenu, DrawMenuBar, GetCursorPos, GetSystemMenu, GetSystemMetrics, GetWindowRect,
+        HWND_NOTOPMOST, HWND_TOPMOST, MF_BYCOMMAND, SC_CLOSE, SM_CXVIRTUALSCREEN,
+        SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SWP_NOACTIVATE, SWP_NOMOVE,
+        SWP_NOSIZE, SWP_NOZORDER, SetWindowPos,
     };
 
-    use super::DragStep;
+    use super::{DragStep, ResizeEdge};
 
     /// Separación a la derecha del escritorio virtual para aparcar el avatar.
     const PARK_GAP: i32 = 240;
-    /// Identificador del atajo global.
-    const HOTKEY_ID: i32 = 0x504E47;
+    /// Tamaño mínimo lógico al redimensionar con el ratón.
+    const MIN_RESIZE: f32 = 120.0;
 
     #[derive(Clone, Copy)]
     struct DragState {
@@ -58,8 +87,19 @@ mod imp {
         scale: f32,
     }
 
+    #[derive(Clone, Copy)]
+    struct ResizeState {
+        hwnd: isize,
+        edge: ResizeEdge,
+        start_cursor: (i32, i32),
+        start_rect: RECT,
+        logical: (f32, f32, f32, f32),
+        scale: f32,
+    }
+
     static DRAG: Mutex<Option<DragState>> = Mutex::new(None);
-    static AVATAR: AtomicIsize = AtomicIsize::new(0);
+    static RESIZE: Mutex<Option<ResizeState>> = Mutex::new(None);
+    static FULLSCREEN: Mutex<Option<RECT>> = Mutex::new(None);
     static PARKED: AtomicBool = AtomicBool::new(false);
     static VISIBLE: Mutex<Option<(i32, i32)>> = Mutex::new(None);
 
@@ -169,6 +209,108 @@ mod imp {
         })
     }
 
+    /// Empieza un redimensionado manual desde un borde o esquina.
+    pub fn begin_resize(
+        window: &Window,
+        edge: ResizeEdge,
+        scale: f32,
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+    ) {
+        if FULLSCREEN
+            .lock()
+            .is_ok_and(|fullscreen| fullscreen.is_some())
+        {
+            return;
+        }
+        let Some(hwnd) = hwnd(window) else {
+            return;
+        };
+        let Some((cursor_x, cursor_y)) = cursor_pos() else {
+            return;
+        };
+        let Some(rect) = window_rect(hwnd) else {
+            return;
+        };
+        let scale = if scale.is_finite() && scale > 0.0 {
+            scale
+        } else {
+            1.0
+        };
+        if let Ok(mut resize) = RESIZE.lock() {
+            *resize = Some(ResizeState {
+                hwnd: hwnd.0 as isize,
+                edge,
+                start_cursor: (cursor_x, cursor_y),
+                start_rect: rect,
+                logical: (x, y, width, height),
+                scale,
+            });
+        }
+    }
+
+    /// Avanza el redimensionado; `None` si no hay ninguno activo.
+    pub fn resize_step() -> Option<DragStep> {
+        let mut guard = RESIZE.lock().ok()?;
+        let state = *guard.as_ref()?;
+        let (cursor_x, cursor_y) = cursor_pos()?;
+        // SAFETY: `GetAsyncKeyState` solo consulta el estado global del ratón;
+        // no retiene punteros.
+        let pressed = (unsafe { GetAsyncKeyState(VK_LBUTTON.0 as i32) } as u16 & 0x8000) != 0;
+
+        let min = (MIN_RESIZE * state.scale).round() as i32;
+        let mut left = state.start_rect.left;
+        let mut top = state.start_rect.top;
+        let mut right = state.start_rect.right;
+        let mut bottom = state.start_rect.bottom;
+        let dx = cursor_x - state.start_cursor.0;
+        let dy = cursor_y - state.start_cursor.1;
+        if state.edge.moves_left() {
+            left = (state.start_rect.left + dx).min(right - min);
+        }
+        if state.edge.moves_right() {
+            right = (state.start_rect.right + dx).max(left + min);
+        }
+        if state.edge.moves_top() {
+            top = (state.start_rect.top + dy).min(bottom - min);
+        }
+        if state.edge.moves_bottom() {
+            bottom = (state.start_rect.bottom + dy).max(top + min);
+        }
+
+        // SAFETY: el `HWND` se guardó de una ventana viva; el rectángulo sale
+        // de `GetWindowRect` y `SWP_NOZORDER | SWP_NOACTIVATE` no roba el foco.
+        unsafe {
+            let _ = SetWindowPos(
+                hwnd_from(state.hwnd),
+                None,
+                left,
+                top,
+                right - left,
+                bottom - top,
+                SWP_NOZORDER | SWP_NOACTIVATE,
+            );
+        }
+
+        if pressed {
+            return Some(DragStep::Active);
+        }
+
+        *guard = None;
+        if let Ok(mut visible) = VISIBLE.lock() {
+            *visible = Some((left, top));
+        }
+        let scale = state.scale;
+        Some(DragStep::Finished {
+            x: state.logical.0 + (left - state.start_rect.left) as f32 / scale,
+            y: state.logical.1 + (top - state.start_rect.top) as f32 / scale,
+            width: (right - left) as f32 / scale,
+            height: (bottom - top) as f32 / scale,
+        })
+    }
+
     /// Pone la ventana por encima (o por debajo) del resto sin moverla.
     pub fn set_topmost(window: &Window, always_on_top: bool) {
         let Some(hwnd) = hwnd(window) else {
@@ -265,6 +407,77 @@ mod imp {
         }
     }
 
+    /// Guarda la posición visible inicial para poder aparcar y volver.
+    pub fn remember_origin(window: &Window) {
+        PARKED.store(false, Ordering::Relaxed);
+        let Some(hwnd) = hwnd(window) else {
+            return;
+        };
+        let Some(rect) = window_rect(hwnd) else {
+            return;
+        };
+        set_visible_origin(&rect);
+    }
+
+    /// Lleva el overlay a todo el escritorio virtual o lo devuelve a su sitio.
+    pub fn set_fullscreen(window: &Window, enabled: bool) {
+        let Some(hwnd) = hwnd(window) else {
+            return;
+        };
+        let Ok(mut fullscreen) = FULLSCREEN.lock() else {
+            return;
+        };
+        if enabled {
+            if fullscreen.is_some() {
+                return;
+            }
+            let Some(rect) = window_rect(hwnd) else {
+                return;
+            };
+            *fullscreen = Some(rect);
+            // SAFETY: `GetSystemMetrics` solo lee métricas del sistema.
+            let (left, top, width, height) = unsafe {
+                (
+                    GetSystemMetrics(SM_XVIRTUALSCREEN),
+                    GetSystemMetrics(SM_YVIRTUALSCREEN),
+                    GetSystemMetrics(SM_CXVIRTUALSCREEN),
+                    GetSystemMetrics(SM_CYVIRTUALSCREEN),
+                )
+            };
+            // SAFETY: `hwnd` es válido; solo se cambia posición y tamaño.
+            unsafe {
+                let _ = SetWindowPos(
+                    hwnd,
+                    None,
+                    left,
+                    top,
+                    width,
+                    height,
+                    SWP_NOZORDER | SWP_NOACTIVATE,
+                );
+            }
+            return;
+        }
+
+        let Some(rect) = fullscreen.take() else {
+            return;
+        };
+        // SAFETY: `hwnd` es válido y el rectángulo se guardó de esa misma
+        // ventana al entrar en pantalla completa.
+        unsafe {
+            let _ = SetWindowPos(
+                hwnd,
+                None,
+                rect.left,
+                rect.top,
+                rect.right - rect.left,
+                rect.bottom - rect.top,
+                SWP_NOZORDER | SWP_NOACTIVATE,
+            );
+        }
+        set_visible_origin(&rect);
+    }
+
     /// Quita `Cerrar` del menú del sistema para que la X nativa quede inactiva.
     pub fn disable_close(window: &Window) {
         let Some(hwnd) = hwnd(window) else {
@@ -281,64 +494,29 @@ mod imp {
             let _ = DrawMenuBar(hwnd);
         }
     }
-
-    fn toggle_park() {
-        let raw = AVATAR.load(Ordering::Relaxed);
-        if raw == 0 {
-            return;
-        }
-        let hwnd = hwnd_from(raw);
-        if PARKED.load(Ordering::Relaxed) {
-            show_hwnd(hwnd);
-        } else {
-            park_hwnd(hwnd);
-        }
-    }
-
-    /// Registra `Ctrl+Alt+P` para alternar visible/aparcado sin abrir ajustes.
-    ///
-    /// El hilo solo atiende `WM_HOTKEY`; no toca GPUI ni el hilo principal.
-    pub fn install_hotkey(window: &Window) {
-        let Some(hwnd) = hwnd(window) else {
-            return;
-        };
-        AVATAR.store(hwnd.0 as isize, Ordering::Relaxed);
-        if let Some(rect) = window_rect(hwnd) {
-            set_visible_origin(&rect);
-        }
-        let _ = std::thread::Builder::new()
-            .name("pngtuber-hotkey".to_string())
-            .spawn(|| {
-                // SAFETY: el atajo se registra en este hilo y `GetMessageW`
-                // consume su propia cola; no hay punteros compartidos.
-                unsafe {
-                    if RegisterHotKey(
-                        None,
-                        HOTKEY_ID,
-                        MOD_CONTROL | MOD_ALT | MOD_NOREPEAT,
-                        VK_P.0 as u32,
-                    )
-                    .is_err()
-                    {
-                        return;
-                    }
-                    let mut message = MSG::default();
-                    while GetMessageW(&mut message, None, 0, 0).as_bool() {
-                        if message.message == WM_HOTKEY {
-                            toggle_park();
-                        }
-                    }
-                }
-            });
-    }
 }
 
 #[cfg(windows)]
-pub use imp::{begin_drag, disable_close, drag_step, install_hotkey, park, set_topmost, show};
+pub use imp::{
+    begin_drag, begin_resize, disable_close, drag_step, park, remember_origin, resize_step,
+    set_fullscreen, set_topmost, show,
+};
 
 #[cfg(not(windows))]
 pub fn begin_drag(
     _window: &gpui_kit::Window,
+    _scale: f32,
+    _x: f32,
+    _y: f32,
+    _width: f32,
+    _height: f32,
+) {
+}
+
+#[cfg(not(windows))]
+pub fn begin_resize(
+    _window: &gpui_kit::Window,
+    _edge: ResizeEdge,
     _scale: f32,
     _x: f32,
     _y: f32,
@@ -353,16 +531,24 @@ pub fn drag_step() -> Option<DragStep> {
 }
 
 #[cfg(not(windows))]
+pub fn resize_step() -> Option<DragStep> {
+    None
+}
+
+#[cfg(not(windows))]
 pub fn set_topmost(_window: &gpui_kit::Window, _always_on_top: bool) {}
+
+#[cfg(not(windows))]
+pub fn remember_origin(_window: &gpui_kit::Window) {}
+
+#[cfg(not(windows))]
+pub fn set_fullscreen(_window: &gpui_kit::Window, _enabled: bool) {}
 
 #[cfg(not(windows))]
 pub fn park(_window: &gpui_kit::Window) {}
 
 #[cfg(not(windows))]
 pub fn show(_window: &gpui_kit::Window) {}
-
-#[cfg(not(windows))]
-pub fn install_hotkey(_window: &gpui_kit::Window) {}
 
 #[cfg(not(windows))]
 pub fn disable_close(_window: &gpui_kit::Window) {}

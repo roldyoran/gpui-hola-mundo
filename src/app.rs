@@ -8,9 +8,11 @@
 use async_channel::Receiver;
 use gpui_kit::*;
 
+use std::sync::Arc;
+
 use crate::features::audio::devices::DeviceEntry;
 use crate::features::audio::{AudioConfig, AudioEvent, AudioService, AudioStatus};
-use crate::features::avatar::AvatarSlot;
+use crate::features::avatar::{AvatarSlot, decode_png};
 use crate::features::settings::{Paths, Settings};
 
 /// Estado compartido por la ventana del avatar y la de ajustes.
@@ -24,10 +26,16 @@ pub struct AppState {
     pub devices: Vec<DeviceEntry>,
     pub devices_error: Option<String>,
     pub storage_error: Option<String>,
-    /// Incrementa cuando cambian los PNG; la vista recarga sus texturas.
-    pub avatar_generation: u64,
+    /// PNG ya decodificados. Los comparten el overlay y la preview: una sola
+    /// textura en memoria para cada estado.
+    pub avatar_closed: Option<Arc<Image>>,
+    pub avatar_open: Option<Arc<Image>>,
     pub settings_window: Option<AnyWindowHandle>,
     pub avatar_window: Option<AnyWindowHandle>,
+    /// El overlay existe pero está aparcado fuera del escritorio.
+    pub avatar_parked: bool,
+    /// El overlay ocupa el escritorio virtual completo.
+    pub avatar_maximized: bool,
     #[allow(dead_code)]
     pump: Task<()>,
 }
@@ -41,7 +49,7 @@ impl AppState {
             drain_audio(events_rx, this, cx).await;
         });
 
-        let state = Self {
+        let mut state = Self {
             settings,
             paths,
             audio,
@@ -51,14 +59,38 @@ impl AppState {
             devices: Vec::new(),
             devices_error: None,
             storage_error: None,
-            avatar_generation: 0,
+            avatar_closed: None,
+            avatar_open: None,
             settings_window: None,
             avatar_window: None,
+            avatar_parked: false,
+            avatar_maximized: false,
             pump,
         };
         state.apply_audio();
         state.refresh_devices();
+        state.reload_avatars();
         state
+    }
+
+    /// Decodifica los PNG configurados. Se llama al arrancar y al importar.
+    fn reload_avatars(&mut self) {
+        let closed = self
+            .settings
+            .avatar
+            .closed
+            .as_ref()
+            .and_then(|relative| self.paths.avatar_bytes(relative))
+            .and_then(|bytes| decode_png(&bytes));
+        let open = self
+            .settings
+            .avatar
+            .open
+            .as_ref()
+            .and_then(|relative| self.paths.avatar_bytes(relative))
+            .and_then(|bytes| decode_png(&bytes));
+        self.avatar_closed = closed;
+        self.avatar_open = open;
     }
 
     /// Aplica la configuración de audio vigente al hilo dueño del stream.
@@ -133,7 +165,7 @@ impl AppState {
             AvatarSlot::Closed => self.settings.avatar.closed = Some(relative),
             AvatarSlot::Open => self.settings.avatar.open = Some(relative),
         }
-        self.avatar_generation = self.avatar_generation.wrapping_add(1);
+        self.reload_avatars();
         self.persist();
     }
 

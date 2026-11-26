@@ -19,8 +19,10 @@ pub const SCHEMA_VERSION: u32 = 1;
 
 const DEFAULT_SIZE: f32 = 320.0;
 const MIN_SIZE: f32 = 120.0;
-const MAX_WIDTH: f32 = 1200.0;
-const MAX_HEIGHT: f32 = 900.0;
+/// Límites de cordura al cargar: el overlay puede ocupar varios monitores
+/// después de redimensionarlo a mano, así que no se recorta a 1200×900.
+const MAX_WIDTH: f32 = 8192.0;
+const MAX_HEIGHT: f32 = 8192.0;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Settings {

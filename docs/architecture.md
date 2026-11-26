@@ -8,10 +8,10 @@ este producto necesita.
 
 ```mermaid
 flowchart TD
-    Main["main: arranque y composición"] --> App["app: AppState global"]
-    Main --> Window["window: opciones y apertura"]
-    Main --> Avatar["features/avatar: PNG y overlay"]
-    Main --> Settings["features/settings: esquema y UI"]
+    Main["main: arranque y composición"] --> Window["window: opciones y apertura"]
+    Main --> App["app: AppState global"]
+    Window --> Settings["features/settings: esquema, UI y preview"]
+    Window -->|"al pulsar Mostrar"| Avatar["features/avatar: PNG y overlay"]
 
     App --> Audio["features/audio: hilo dueño, RMS, VAD"]
     App --> Settings
@@ -19,19 +19,19 @@ flowchart TD
     Settings --> State
     Avatar --> UI["shared/ui: tokens"]
     Settings --> UI
-    Settings --> Native["win32: topmost"]
-    Avatar --> Native2["win32: arrastre"]
+    Settings --> Native["win32: topmost, ocultar/mostrar"]
+    Avatar --> Native2["win32: arrastre, resize y pantalla completa"]
 ```
 
 | Pieza | Responsabilidad | No hace |
 | --- | --- | --- |
-| `src/main.rs` | `application().run`, rutas, ajustes, ventana del avatar, primer arranque | lógica de producto |
-| `src/app.rs` | `AppState`: ajustes, boca, estado de audio, handles; bomba canal → `notify` | dibujar ni decidir VAD |
-| `src/window.rs` | `WindowOptions` de overlay/ajustes, abrir ajustes, redimensionar, aparcar/mostrar | controles |
-| `src/win32.rs` | arrastre manual con `SetWindowPos`, topmost, aparcado fuera de pantalla, atajo `Ctrl+Alt+P` y `SC_CLOSE` deshabilitado | reglas de negocio |
-| `features/avatar` | validar/copiar PNG, decodificar una vez, render del overlay | conocer el audio |
+| `src/main.rs` | `application().run`, rutas, ajustes y apertura inicial de la ventana de ajustes. Nunca crea el overlay. | lógica de producto |
+| `src/app.rs` | `AppState`: ajustes, boca, estado de audio, handles y flags de aparcado/pantalla completa; bomba canal → `notify` | dibujar ni decidir VAD |
+| `src/window.rs` | `WindowOptions` de overlay/ajustes, abrir ajustes, crear el overlay al pulsar **Mostrar**, redimensionar, aparcar/mostrar y pantalla completa | controles |
+| `src/win32.rs` | arrastre y redimensionado manuales con `SetWindowPos`, topmost, pantalla completa, aparcado fuera de pantalla y `SC_CLOSE` deshabilitado | reglas de negocio |
+| `features/avatar` | validar/copiar PNG, decodificar una vez, render del overlay y zonas de resize | conocer el audio |
 | `features/audio` | enumerar dispositivos, hilo dueño, stream cpal, VAD, eventos | tocar GPUI |
-| `features/settings` | esquema v1, rutas de datos, escritura atómica, UI | dibujar el avatar |
+| `features/settings` | esquema v1, rutas de datos, escritura atómica, UI y previsualización lateral | dibujar el overlay real |
 | `shared/ui` | tokens y piezas visuales | conocer features |
 
 ## Hilos
@@ -62,10 +62,14 @@ Stream WASAPI (cpal) ── callback: RMS → VAD → try_send solo al cambiar
 - Un cambio de boca produce **una** notificación; la vista observa `AppState`.
 - El medidor de nivel no usa el canal: lee un `AtomicU32` cada 45 ms mientras
   la ventana de ajustes está abierta. El overlay no se redibuja por el nivel.
-- El arrastre no usa el bucle modal de Windows: una tarea de GPUI lee el
-  cursor cada 16 ms y mueve el `HWND` con `SetWindowPos`. El hilo del atajo
-  global solo atiende `WM_HOTKEY` y mueve el mismo `HWND` fuera/dentro del
-  escritorio virtual.
+- El arrastre y el redimensionado no usan el bucle modal de Windows: una tarea
+  de GPUI lee el cursor cada 16 ms y mueve el `HWND` con `SetWindowPos`. El
+  overlay no se crea al arrancar; `window::show_avatar_overlay` lo abre la
+  primera vez que el usuario pulsa **Mostrar**. El VAD sigue corriendo aunque
+  no exista overlay, porque el audio vive en `AppState`.
+- La previsualización de ajustes escucha el mismo `mouth_open` y comparte las
+  texturas ya decodificadas de `AppState`; no crea una segunda ventana, no
+  duplica el stream y no vuelve a decodificar los PNG.
 - La ventana de ajustes no se cierra: `on_window_should_close` devuelve
   `false` y `SC_CLOSE` se elimina del menú del sistema. El botón **Salir de la
   app** es la única salida; minimizar/maximizar siguen siendo nativos.
@@ -79,11 +83,12 @@ flowchart LR
     VAD -->|cambio| Chan["async-channel"]
     Chan --> App["AppState.mouth_open"]
     App -->|notify| Overlay["AvatarView: img(cerrado|abierto)"]
+    App -->|notify| Preview["SettingsView: preview lateral"]
 ```
 
-La posición y el tamaño se leen de `Window::bounds()` después del arrastre
-nativo y se persisten en `settings.json`. Al arrancar, `window::avatar_bounds`
-restaura esos valores.
+La posición y el tamaño se leen de `Window::bounds()` después de arrastrar o
+redimensionar y se persisten en `settings.json`. `window::avatar_bounds`
+restaura esos valores la primera vez que se pulsa **Mostrar**.
 
 ## Persistencia
 
