@@ -202,7 +202,7 @@ mod tests {
 
     #[test]
     fn bloques_gigantes_no_desbordan() {
-        let mut vad = vad(48_000);
+        let mut vad = Vad::new(48_000, 55);
         assert!(vad.process(-30.0, usize::MAX));
         assert!(vad.is_open());
         assert!(vad.process(-80.0, usize::MAX));
@@ -211,7 +211,7 @@ mod tests {
 
     #[test]
     fn bloques_vacios_o_nan_no_cambian_nada() {
-        let mut vad = vad(1000);
+        let mut vad = Vad::new(1000, 55);
         assert!(!vad.process(-10.0, 0));
         assert!(!vad.process(f32::NAN, 100));
         assert!(!vad.is_open());

@@ -87,7 +87,7 @@ mod tests {
 
     #[test]
     fn acepta_un_png_real() {
-        assert!(is_png(&TINY_PNG));
+        assert!(is_png(TINY_PNG));
     }
 
     #[test]
