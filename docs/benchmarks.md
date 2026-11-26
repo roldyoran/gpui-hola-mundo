@@ -61,3 +61,4 @@ Sin número no hay optimización.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-11-25 | test base | 1000×700 JPEG | 47–57 MB | 36,3 MB | 1,20–1,41 % | — | referencia, no este producto |
 | 2026-11-26 | CI `d2e13c4` | overlay 320×320 + ajustes abiertos, sin PNG | 51,2 MB | 30,7 MB | pendiente | pendiente | 17 hilos; binario 11.433.984 B (10,9 MiB); `WaitForInputIdle` falló, arranque no medido; lo prueba el humano |
+| 2026-11-26 | CI `6563b38` | UI shadcn + medidor de nivel + modo OBS | — | — | — | — | binario 11.640.320 B (11,1 MiB); arranque aislado correcto; medición de RAM/CPU pendiente |

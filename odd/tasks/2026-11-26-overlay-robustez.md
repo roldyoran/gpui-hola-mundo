@@ -1,6 +1,6 @@
 # Robustez del overlay: arrastre, tamaño libre y modo OBS
 
-- **Estado:** `implementing` · Verificación **solo por GitHub Actions**
+- **Estado:** `checking` · Implementado · CI en verde (run `45734803073`) · Prueba humana pendiente
 - **Fecha:** 2026-11-26
 - **Origen:** prueba humana del `.exe` del run `45732240210`
 - **Fase anterior:** [`2026-11-25-ui-shadcn.md`](2026-11-25-ui-shadcn.md)
@@ -65,4 +65,11 @@
 
 ## Evidencia
 
-- Pendiente del run de Actions de esta fase.
+- CI en verde en el run [`45734803073`](https://github.com/roldyoran/gpui-hola-mundo/actions/runs/45734803073):
+  `fmt`, `clippy --all-targets -- -D warnings`, tests y release; artefacto
+  `pngtuber-lite-windows-x86_64` (11.640.320 B = 11,1 MiB).
+- Arranque aislado con `%APPDATA%` temporal: el proceso sigue vivo, abre la
+  ventana de ajustes y crea el hilo `pngtuber-hotkey` sin caer.
+- Pendiente de prueba humana: clics alternos, arrastre, ancho/alto, Ocultar /
+  Mostrar y `Ctrl+Alt+P`.
+
