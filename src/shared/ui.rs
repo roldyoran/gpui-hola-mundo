@@ -196,8 +196,9 @@ pub fn section_label(text: impl Into<SharedString>) -> Div {
 }
 
 /// Base compartida por las variantes de botón, sin estados.
-fn button_base(text: impl Into<SharedString>) -> Div {
+fn button_base(id: impl Into<ElementId>, text: impl Into<SharedString>) -> Stateful<Div> {
     div()
+        .id(id)
         .flex()
         .items_center()
         .justify_center()
@@ -212,8 +213,8 @@ fn button_base(text: impl Into<SharedString>) -> Div {
 }
 
 /// Botón secundario: fondo oscuro y borde.
-pub fn button(text: impl Into<SharedString>) -> Div {
-    button_base(text)
+pub fn button(id: impl Into<ElementId>, text: impl Into<SharedString>) -> Stateful<Div> {
+    button_base(id, text)
         .bg(card_bg())
         .border_color(border())
         .text_color(fg())
@@ -222,8 +223,8 @@ pub fn button(text: impl Into<SharedString>) -> Div {
 }
 
 /// Botón principal: claro sobre oscuro, como el `default` de shadcn.
-pub fn primary_button(text: impl Into<SharedString>) -> Div {
-    button_base(text)
+pub fn primary_button(id: impl Into<ElementId>, text: impl Into<SharedString>) -> Stateful<Div> {
+    button_base(id, text)
         .bg(primary())
         .border_color(primary())
         .text_color(primary_fg())
@@ -232,8 +233,9 @@ pub fn primary_button(text: impl Into<SharedString>) -> Div {
 }
 
 /// Botón fantasma para acciones discretas.
-pub fn ghost_button(text: impl Into<SharedString>) -> Div {
+pub fn ghost_button(id: impl Into<ElementId>, text: impl Into<SharedString>) -> Stateful<Div> {
     div()
+        .id(id)
         .flex()
         .items_center()
         .justify_center()
@@ -249,8 +251,9 @@ pub fn ghost_button(text: impl Into<SharedString>) -> Div {
 }
 
 /// Botón de icono cuadrado (cerrar, pasos −/+).
-pub fn icon_button(icon: impl Into<SharedString>) -> Div {
+pub fn icon_button(id: impl Into<ElementId>, icon: impl Into<SharedString>) -> Stateful<Div> {
     div()
+        .id(id)
         .flex()
         .items_center()
         .justify_center()
@@ -266,8 +269,11 @@ pub fn icon_button(icon: impl Into<SharedString>) -> Div {
 }
 
 /// Botón destructivo sólido.
-pub fn destructive_button(text: impl Into<SharedString>) -> Div {
-    button_base(text)
+pub fn destructive_button(
+    id: impl Into<ElementId>,
+    text: impl Into<SharedString>,
+) -> Stateful<Div> {
+    button_base(id, text)
         .bg(destructive())
         .border_color(destructive())
         .text_color(fg())
@@ -284,8 +290,9 @@ pub fn destructive_button(text: impl Into<SharedString>) -> Div {
 }
 
 /// Switch de 36×20 con knob de 16.
-pub fn switch(on: bool) -> Div {
+pub fn switch(id: impl Into<ElementId>, on: bool) -> Stateful<Div> {
     div()
+        .id(id)
         .flex()
         .flex_row()
         .items_center()
@@ -320,8 +327,9 @@ pub fn switch(on: bool) -> Div {
 }
 
 /// Fila seleccionable de una lista (micrófonos).
-pub fn list_row(is_selected: bool) -> Div {
+pub fn list_row(id: impl Into<ElementId>, is_selected: bool) -> Stateful<Div> {
     div()
+        .id(id)
         .flex()
         .flex_row()
         .items_center()
@@ -339,6 +347,7 @@ pub fn list_row(is_selected: bool) -> Div {
         .when(!is_selected, |element| {
             element.hover(|style| style.bg(muted_bg()))
         })
+        .active(|style| style.bg(active_bg()))
 }
 
 /// Radio de 16 px: borde y punto interior cuando está elegido.
@@ -404,8 +413,13 @@ pub fn segmented() -> Div {
 }
 
 /// Segmento de un control segmentado.
-pub fn segment(text: impl Into<SharedString>, is_selected: bool) -> Div {
+pub fn segment(
+    id: impl Into<ElementId>,
+    text: impl Into<SharedString>,
+    is_selected: bool,
+) -> Stateful<Div> {
     div()
+        .id(id)
         .flex_1()
         .flex()
         .items_center()
@@ -430,6 +444,7 @@ pub fn segment(text: impl Into<SharedString>, is_selected: bool) -> Div {
         .when(!is_selected, |element| {
             element.hover(|style| style.bg(hover_bg()).text_color(fg()))
         })
+        .active(|style| style.bg(active_bg()))
         .child(text.into())
 }
 

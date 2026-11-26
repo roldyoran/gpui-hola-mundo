@@ -7,7 +7,6 @@
 
 use std::time::Duration;
 
-use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
 use crate::app::AppState;
@@ -167,7 +166,7 @@ impl SettingsView {
                             .child(ui::hint("Overlay transparente · detección por RMS")),
                     ),
             )
-            .child(ui::icon_button("×").on_mouse_down(
+            .child(ui::icon_button("close-settings", "×").on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|_, _: &MouseDownEvent, window, _| window.remove_window()),
             ))
@@ -199,6 +198,10 @@ impl SettingsView {
         let file = current
             .map(|path| path.rsplit('/').next().unwrap_or(path).to_string())
             .unwrap_or_else(|| "Sin imagen".to_string());
+        let pick_id = match slot {
+            AvatarSlot::Closed => "pick-closed",
+            AvatarSlot::Open => "pick-open",
+        };
 
         ui::row()
             .child(
@@ -240,7 +243,7 @@ impl SettingsView {
                             ),
                     ),
             )
-            .child(ui::button("Elegir").on_mouse_down(
+            .child(ui::button(pick_id, "Elegir").on_mouse_down(
                 MouseButton::Left,
                 cx.listener(move |this, _: &MouseDownEvent, _window, cx| this.pick_png(slot, cx)),
             ))
@@ -258,14 +261,16 @@ impl SettingsView {
 
         let mut device_list = div().flex().flex_col().p(px(6.));
         device_list = device_list.child(Self::device_row(
+            "device-default".to_string(),
             None,
             "Predeterminado del sistema".to_string(),
             settings.audio.device_id.is_none(),
             cx,
         ));
-        for entry in devices.iter().take(MAX_DEVICE_ROWS) {
+        for (index, entry) in devices.iter().take(MAX_DEVICE_ROWS).enumerate() {
             let selected = settings.audio.device_id.as_deref() == Some(entry.id.as_str());
             device_list = device_list.child(Self::device_row(
+                format!("device-{index}"),
                 Some(entry.id.clone()),
                 entry.name.clone(),
                 selected,
@@ -311,7 +316,7 @@ impl SettingsView {
                             .child(ui::label("Detección de voz"))
                             .child(ui::hint("Abre la boca cuando superas el umbral.")),
                     )
-                    .child(ui::switch(enabled).on_mouse_down(
+                    .child(ui::switch("audio-enabled", enabled).on_mouse_down(
                         MouseButton::Left,
                         cx.listener(|this, _: &MouseDownEvent, _, cx| {
                             let next = !this.state.read(cx).settings.audio.enabled;
@@ -350,15 +355,17 @@ impl SettingsView {
                                     .child(status_text),
                             ),
                     )
-                    .child(ui::ghost_button("Actualizar").on_mouse_down(
-                        MouseButton::Left,
-                        cx.listener(|this, _: &MouseDownEvent, _, cx| this.refresh_devices(cx)),
-                    )),
+                    .child(
+                        ui::ghost_button("refresh-devices", "Actualizar").on_mouse_down(
+                            MouseButton::Left,
+                            cx.listener(|this, _: &MouseDownEvent, _, cx| this.refresh_devices(cx)),
+                        ),
+                    ),
             );
 
         if let Some(message) = audio_error {
             card = card.child(ui::notice(message.to_string(), ui::warning()).child(
-                ui::ghost_button("Descartar").on_mouse_down(
+                ui::ghost_button("dismiss-audio-error", "Descartar").on_mouse_down(
                     MouseButton::Left,
                     cx.listener(|this, _: &MouseDownEvent, _, cx| {
                         this.update_state(cx, |state| state.clear_audio_error());
@@ -386,8 +393,14 @@ impl SettingsView {
         card
     }
 
-    fn device_row(id: Option<String>, name: String, selected: bool, cx: &mut Context<Self>) -> Div {
-        ui::list_row(selected)
+    fn device_row(
+        row_id: String,
+        id: Option<String>,
+        name: String,
+        selected: bool,
+        cx: &mut Context<Self>,
+    ) -> Stateful<Div> {
+        ui::list_row(row_id, selected)
             .child(
                 div()
                     .flex()
@@ -454,12 +467,14 @@ impl SettingsView {
 
         let mut presets = ui::segmented();
         for (label, preset) in [("Baja", 25_u8), ("Media", 55), ("Alta", 80)] {
-            presets = presets.child(ui::segment(label, value == preset).on_mouse_down(
-                MouseButton::Left,
-                cx.listener(move |this, _: &MouseDownEvent, _, cx| {
-                    this.update_state(cx, move |state| state.set_sensitivity(preset));
-                }),
-            ));
+            presets = presets.child(
+                ui::segment(("preset", preset as usize), label, value == preset).on_mouse_down(
+                    MouseButton::Left,
+                    cx.listener(move |this, _: &MouseDownEvent, _, cx| {
+                        this.update_state(cx, move |state| state.set_sensitivity(preset));
+                    }),
+                ),
+            );
         }
 
         ui::section(
@@ -560,7 +575,7 @@ impl SettingsView {
                                             .flex_row()
                                             .items_center()
                                             .gap_2()
-                                            .child(ui::icon_button("−").on_mouse_down(
+                                            .child(ui::icon_button("sensitivity-down", "−").on_mouse_down(
                                                 MouseButton::Left,
                                                 cx.listener(move |this, _: &MouseDownEvent, _, cx| {
                                                     this.update_state(cx, move |state| {
@@ -569,7 +584,7 @@ impl SettingsView {
                                                 }),
                                             ))
                                             .child(ui::value_badge(format!("{value} / 100")))
-                                            .child(ui::icon_button("+").on_mouse_down(
+                                            .child(ui::icon_button("sensitivity-up", "+").on_mouse_down(
                                                 MouseButton::Left,
                                                 cx.listener(move |this, _: &MouseDownEvent, _, cx| {
                                                     this.update_state(cx, move |state| {
@@ -619,14 +634,14 @@ impl SettingsView {
                                     .flex_row()
                                     .items_center()
                                     .gap_2()
-                                    .child(ui::icon_button("−").on_mouse_down(
+                                    .child(ui::icon_button("height-down", "−").on_mouse_down(
                                         MouseButton::Left,
                                         cx.listener(move |this, _: &MouseDownEvent, _, cx| {
                                             this.apply_height(shorter, cx)
                                         }),
                                     ))
                                     .child(ui::value_badge(format!("{} px", height.round() as i32)))
-                                    .child(ui::icon_button("+").on_mouse_down(
+                                    .child(ui::icon_button("height-up", "+").on_mouse_down(
                                         MouseButton::Left,
                                         cx.listener(move |this, _: &MouseDownEvent, _, cx| {
                                             this.apply_height(taller, cx)
@@ -652,7 +667,7 @@ impl SettingsView {
                                         "Mantiene el avatar por encima de las demás ventanas.",
                                     )),
                             )
-                            .child(ui::switch(topmost).on_mouse_down(
+                            .child(ui::switch("always-on-top", topmost).on_mouse_down(
                                 MouseButton::Left,
                                 cx.listener(|this, _: &MouseDownEvent, _, cx| {
                                     let next = !this.state.read(cx).settings.window.always_on_top;
@@ -688,10 +703,12 @@ impl SettingsView {
                     .justify_between()
                     .gap_4()
                     .child(ui::hint("Los cambios se guardan automáticamente."))
-                    .child(ui::destructive_button("Salir de la app").on_mouse_down(
-                        MouseButton::Left,
-                        cx.listener(|_, _: &MouseDownEvent, _, cx| cx.quit()),
-                    )),
+                    .child(
+                        ui::destructive_button("quit-app", "Salir de la app").on_mouse_down(
+                            MouseButton::Left,
+                            cx.listener(|_, _: &MouseDownEvent, _, cx| cx.quit()),
+                        ),
+                    ),
             );
 
         if let Some(message) = storage_error {
