@@ -67,8 +67,8 @@ mod imp {
     use windows::Win32::UI::WindowsAndMessaging::{
         DeleteMenu, DrawMenuBar, GetCursorPos, GetSystemMenu, GetSystemMetrics, GetWindowRect,
         HWND_NOTOPMOST, HWND_TOPMOST, MF_BYCOMMAND, SC_CLOSE, SM_CXVIRTUALSCREEN,
-        SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SWP_NOACTIVATE, SWP_NOMOVE,
-        SWP_NOSIZE, SWP_NOZORDER, SetWindowPos,
+        SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
+        SetWindowPos,
     };
 
     use super::{DragStep, ResizeEdge};
@@ -99,7 +99,6 @@ mod imp {
 
     static DRAG: Mutex<Option<DragState>> = Mutex::new(None);
     static RESIZE: Mutex<Option<ResizeState>> = Mutex::new(None);
-    static FULLSCREEN: Mutex<Option<RECT>> = Mutex::new(None);
     static PARKED: AtomicBool = AtomicBool::new(false);
     static VISIBLE: Mutex<Option<(i32, i32)>> = Mutex::new(None);
 
@@ -219,12 +218,6 @@ mod imp {
         width: f32,
         height: f32,
     ) {
-        if FULLSCREEN
-            .lock()
-            .is_ok_and(|fullscreen| fullscreen.is_some())
-        {
-            return;
-        }
         let Some(hwnd) = hwnd(window) else {
             return;
         };
@@ -419,65 +412,6 @@ mod imp {
         set_visible_origin(&rect);
     }
 
-    /// Lleva el overlay a todo el escritorio virtual o lo devuelve a su sitio.
-    pub fn set_fullscreen(window: &Window, enabled: bool) {
-        let Some(hwnd) = hwnd(window) else {
-            return;
-        };
-        let Ok(mut fullscreen) = FULLSCREEN.lock() else {
-            return;
-        };
-        if enabled {
-            if fullscreen.is_some() {
-                return;
-            }
-            let Some(rect) = window_rect(hwnd) else {
-                return;
-            };
-            *fullscreen = Some(rect);
-            // SAFETY: `GetSystemMetrics` solo lee métricas del sistema.
-            let (left, top, width, height) = unsafe {
-                (
-                    GetSystemMetrics(SM_XVIRTUALSCREEN),
-                    GetSystemMetrics(SM_YVIRTUALSCREEN),
-                    GetSystemMetrics(SM_CXVIRTUALSCREEN),
-                    GetSystemMetrics(SM_CYVIRTUALSCREEN),
-                )
-            };
-            // SAFETY: `hwnd` es válido; solo se cambia posición y tamaño.
-            unsafe {
-                let _ = SetWindowPos(
-                    hwnd,
-                    None,
-                    left,
-                    top,
-                    width,
-                    height,
-                    SWP_NOZORDER | SWP_NOACTIVATE,
-                );
-            }
-            return;
-        }
-
-        let Some(rect) = fullscreen.take() else {
-            return;
-        };
-        // SAFETY: `hwnd` es válido y el rectángulo se guardó de esa misma
-        // ventana al entrar en pantalla completa.
-        unsafe {
-            let _ = SetWindowPos(
-                hwnd,
-                None,
-                rect.left,
-                rect.top,
-                rect.right - rect.left,
-                rect.bottom - rect.top,
-                SWP_NOZORDER | SWP_NOACTIVATE,
-            );
-        }
-        set_visible_origin(&rect);
-    }
-
     /// Quita `Cerrar` del menú del sistema para que la X nativa quede inactiva.
     pub fn disable_close(window: &Window) {
         let Some(hwnd) = hwnd(window) else {
@@ -499,7 +433,7 @@ mod imp {
 #[cfg(windows)]
 pub use imp::{
     begin_drag, begin_resize, disable_close, drag_step, park, remember_origin, resize_step,
-    set_fullscreen, set_topmost, show,
+    set_topmost, show,
 };
 
 #[cfg(not(windows))]
@@ -540,9 +474,6 @@ pub fn set_topmost(_window: &gpui_kit::Window, _always_on_top: bool) {}
 
 #[cfg(not(windows))]
 pub fn remember_origin(_window: &gpui_kit::Window) {}
-
-#[cfg(not(windows))]
-pub fn set_fullscreen(_window: &gpui_kit::Window, _enabled: bool) {}
 
 #[cfg(not(windows))]
 pub fn park(_window: &gpui_kit::Window) {}

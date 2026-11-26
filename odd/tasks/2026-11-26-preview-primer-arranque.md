@@ -15,10 +15,10 @@ avatar; el overlay real no existe hasta pulsar **Mostrar**. Además:
 - La previsualización va en un **panel lateral** dentro de ajustes.
 - Se elimina el atajo global `Ctrl+Alt+P`; se conservan **Ocultar** y
   **Mostrar**.
-- El overlay se redimensiona **arrastrando los bordes** y tiene una acción de
-  **pantalla completa**.
+- El overlay se redimensiona **arrastrando los bordes**. No tiene pantalla
+  completa: solo se muestra u oculta, siempre en la última posición.
 - Los ajustes siguen siendo libres de redimensionar y maximizar, y no se
-  cierran.
+  cierran. El cuerpo debe poder desplazarse con la rueda.
 
 ## Decisiones
 
@@ -42,9 +42,14 @@ avatar; el overlay real no existe hasta pulsar **Mostrar**. Además:
   zonas invisibles (4 lados y 4 esquinas) inician un arrastre con
   `SetWindowPos`, igual que el movimiento, sin bucles modales. El tamaño
   mínimo es 120 px y el resultado se persiste en `settings.json`.
-- **D7 · Pantalla completa.** Acción manual con las métricas del escritorio
-  virtual. Guarda el rectángulo previo y **Restaurar** lo devuelve.
-- **D8 · Ajustes siempre accesibles.** La ventana sigue sin cerrarse y se
+- **D7 · Sin pantalla completa (ajuste posterior).** El humano pidió quitar la
+  acción de pantalla completa del overlay: solo debe existir
+  **Mostrar**/**Ocultar**, y al mostrarlo debe reaparecer donde estaba. Se
+  elimina `avatar_maximized`, `set_fullscreen` y sus botones.
+- **D8 · Scroll real.** El contenedor con scroll no puede ser un flex en fila:
+  estiraba el contenido a la altura visible y por eso la rueda no tenía nada
+  que desplazar. Pasa a ser un bloque con un hijo en columna.
+- **D9 · Ajustes siempre accesibles.** La ventana sigue sin cerrarse y se
   puede minimizar/maximizar; al pulsar **Mostrar** o el clic derecho del
   avatar se reactiva.
 
@@ -55,11 +60,11 @@ avatar; el overlay real no existe hasta pulsar **Mostrar**. Además:
       boca.
 - [ ] **Mostrar** crea el overlay real; antes de pulsarlo no hay overlay.
 - [ ] **Ocultar** sigue aparcando el avatar fuera de pantalla y **Mostrar** lo
-      devuelve o lo crea.
+      devuelve exactamente a la posición donde estaba (o lo crea ahí).
+- [ ] El overlay no tiene botón ni acción de pantalla completa.
 - [ ] `Ctrl+Alt+P` ya no existe.
 - [ ] Arrastrar lados y esquinas cambia el tamaño; se guarda al soltar.
-- [ ] **Pantalla completa** cubre el escritorio virtual y **Restaurar**
-      devuelve el tamaño anterior.
+- [ ] La rueda desplaza el cuerpo de ajustes hasta la última sección.
 - [ ] Ajustes se redimensiona, se maximiza y no se cierra.
 - [ ] `fmt`, `clippy -D warnings`, tests y release pasan en Actions.
 

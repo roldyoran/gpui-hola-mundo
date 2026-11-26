@@ -51,24 +51,6 @@ pub fn settings_options(bounds: Bounds<Pixels>) -> WindowOptions {
 
 /// Abre ajustes o reactiva la ventana si ya existe.
 pub fn open_settings(state: Entity<AppState>, cx: &mut App) -> anyhow::Result<()> {
-    // Si el overlay está a pantalla completa taparía los ajustes. Al pedir
-    // ajustes se restaura primero su tamaño para que la ventana sea usable.
-    let (avatar_window, maximized) = {
-        let state = state.read(cx);
-        (state.avatar_window, state.avatar_maximized)
-    };
-    if maximized {
-        if let Some(handle) = avatar_window {
-            let _ = handle.update(cx, |_, window, _| {
-                crate::win32::set_fullscreen(window, false)
-            });
-        }
-        state.update(cx, |state, cx| {
-            state.avatar_maximized = false;
-            cx.notify();
-        });
-    }
-
     let settings_window = state.read(cx).settings_window;
     let already_open = settings_window.is_some_and(|handle| {
         handle
@@ -133,7 +115,6 @@ pub fn show_avatar_overlay(state: &Entity<AppState>, cx: &mut App) {
     state.update(cx, |state, cx| {
         state.avatar_window = Some(handle);
         state.avatar_parked = false;
-        state.avatar_maximized = false;
         cx.notify();
     });
     let _ = handle.update(cx, |_, window, _| {
@@ -144,7 +125,7 @@ pub fn show_avatar_overlay(state: &Entity<AppState>, cx: &mut App) {
 
 /// Redimensiona el overlay con los valores ya persistidos.
 pub fn resize_avatar(state: &Entity<AppState>, cx: &mut App) {
-    let (handle, window_size, maximized) = {
+    let (handle, window_size) = {
         let state = state.read(cx);
         (
             state.avatar_window,
@@ -152,23 +133,11 @@ pub fn resize_avatar(state: &Entity<AppState>, cx: &mut App) {
                 px(state.settings.window.width),
                 px(state.settings.window.height),
             ),
-            state.avatar_maximized,
         )
     };
 
     if let Some(handle) = handle {
-        let _ = handle.update(cx, |_, window, _| {
-            if maximized {
-                crate::win32::set_fullscreen(window, false);
-            }
-            window.resize(window_size);
-        });
-        if maximized {
-            state.update(cx, |state, cx| {
-                state.avatar_maximized = false;
-                cx.notify();
-            });
-        }
+        let _ = handle.update(cx, |_, window, _| window.resize(window_size));
     }
 }
 
@@ -176,13 +145,9 @@ pub fn resize_avatar(state: &Entity<AppState>, cx: &mut App) {
 pub fn park_avatar(state: &Entity<AppState>, cx: &mut App) {
     let handle = state.read(cx).avatar_window;
     if let Some(handle) = handle {
-        let _ = handle.update(cx, |_, window, _| {
-            crate::win32::set_fullscreen(window, false);
-            crate::win32::park(window);
-        });
+        let _ = handle.update(cx, |_, window, _| crate::win32::park(window));
         state.update(cx, |state, cx| {
             state.avatar_parked = true;
-            state.avatar_maximized = false;
             cx.notify();
         });
     }
@@ -199,23 +164,6 @@ pub fn show_avatar(state: &Entity<AppState>, cx: &mut App) {
         let _ = handle.update(cx, |_, window, _| crate::win32::show(window));
         state.update(cx, |state, cx| {
             state.avatar_parked = false;
-            cx.notify();
-        });
-    }
-}
-
-/// Entra o sale de pantalla completa en el overlay real.
-pub fn set_avatar_fullscreen(state: &Entity<AppState>, fullscreen: bool, cx: &mut App) {
-    let handle = state.read(cx).avatar_window;
-    if let Some(handle) = handle {
-        let _ = handle.update(cx, |_, window, _| {
-            crate::win32::set_fullscreen(window, fullscreen);
-        });
-        state.update(cx, |state, cx| {
-            state.avatar_maximized = fullscreen;
-            if fullscreen {
-                state.avatar_parked = false;
-            }
             cx.notify();
         });
     }

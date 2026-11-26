@@ -51,8 +51,8 @@ sigue a `gentle-shell-gpui`. Todo sale de `src/shared/ui.rs`.
 - `checkerboard(columns, rows)`: tablero 8×8 de la previsualización; deja ver
   que el fondo del overlay es transparente.
 - Panel de preview: card de 300 px con cabecera, tablero de 248 px, estado
-  `HABLANDO`/`SILENCIO` y las acciones **Mostrar**, **Ocultar** y **Pantalla
-  completa**. **Mostrar** queda inactivo hasta que haya al menos un PNG.
+  `HABLANDO`/`SILENCIO` y las acciones **Mostrar** y **Ocultar**. **Mostrar**
+  queda inactivo hasta que haya al menos un PNG.
 
 ## Reglas
 

@@ -34,8 +34,6 @@ pub struct AppState {
     pub avatar_window: Option<AnyWindowHandle>,
     /// El overlay existe pero está aparcado fuera del escritorio.
     pub avatar_parked: bool,
-    /// El overlay ocupa el escritorio virtual completo.
-    pub avatar_maximized: bool,
     #[allow(dead_code)]
     pump: Task<()>,
 }
@@ -64,7 +62,6 @@ impl AppState {
             settings_window: None,
             avatar_window: None,
             avatar_parked: false,
-            avatar_maximized: false,
             pump,
         };
         state.apply_audio();

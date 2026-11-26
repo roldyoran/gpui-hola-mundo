@@ -47,7 +47,7 @@ impl AvatarView {
 
     /// Arranca un arrastre manual y espera a que se suelte el botón.
     fn begin_drag(&mut self, window: &Window, cx: &mut Context<Self>) {
-        if self.dragging || self.resizing || self.state.read(cx).avatar_maximized {
+        if self.dragging || self.resizing {
             return;
         }
         let bounds = window.bounds();
@@ -88,7 +88,7 @@ impl AvatarView {
 
     /// Arranca un redimensionado desde un borde o esquina del overlay.
     fn begin_resize(&mut self, edge: ResizeEdge, window: &Window, cx: &mut Context<Self>) {
-        if self.dragging || self.resizing || self.state.read(cx).avatar_maximized {
+        if self.dragging || self.resizing {
             return;
         }
         let bounds = window.bounds();

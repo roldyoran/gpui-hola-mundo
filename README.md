@@ -12,8 +12,8 @@ RMS, histéresis y dos imágenes.
 - Ajustes con guardado automático y **previsualización lateral**.
 - El overlay no se crea hasta pulsar **Mostrar**: el primer arranque no tapa
   nada.
-- Arrastrable con el botón izquierdo, redimensionable por los bordes y con
-  pantalla completa; clic derecho reabre los ajustes.
+- Arrastrable con el botón izquierdo y redimensionable por los bordes; clic
+  derecho reabre los ajustes.
 
 ## Requisitos
 
@@ -54,9 +54,6 @@ a una copia de los PNG en `avatars\`.
 
 - **Arrastrar:** botón izquierdo sobre el avatar.
 - **Redimensionar:** arrastra cualquiera de los cuatro lados o esquinas.
-- **Pantalla completa:** botón **Pantalla completa** en la preview o en
-  **Ventana**; **Restaurar** devuelve el tamaño anterior. Con el overlay a
-  pantalla completa, un clic derecho lo restaura y abre ajustes.
 - **Abrir ajustes:** clic derecho sobre el avatar.
 - **Ajustes:** la ventana no se puede cerrar; usa **Minimizar** o
   **Maximizar** de Windows. Sigue en la barra de tareas.

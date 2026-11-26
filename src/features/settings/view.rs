@@ -193,7 +193,7 @@ impl SettingsView {
 
     /// Panel lateral: tablero de transparencia, estado de boca y acciones.
     fn preview_panel(&self, cx: &mut Context<Self>) -> Div {
-        let (settings, mouth_open, status, overlay_exists, parked, maximized, closed, open) = {
+        let (settings, mouth_open, status, overlay_exists, parked, closed, open) = {
             let state = self.state.read(cx);
             (
                 state.settings.clone(),
@@ -201,7 +201,6 @@ impl SettingsView {
                 state.audio_status.clone(),
                 state.avatar_window.is_some(),
                 state.avatar_parked,
-                state.avatar_maximized,
                 state.avatar_closed.clone(),
                 state.avatar_open.clone(),
             )
@@ -287,23 +286,6 @@ impl SettingsView {
                                 }),
                             ),
                     ),
-            );
-            actions = actions.child(
-                ui::button(
-                    "preview-fullscreen",
-                    if maximized {
-                        "Restaurar tamaño"
-                    } else {
-                        "Pantalla completa"
-                    },
-                )
-                .w_full()
-                .on_mouse_down(
-                    MouseButton::Left,
-                    cx.listener(move |this, _: &MouseDownEvent, _, cx| {
-                        window::set_avatar_fullscreen(&this.state, !maximized, cx);
-                    }),
-                ),
             );
         } else if ready {
             actions = actions.child(
@@ -849,7 +831,6 @@ impl SettingsView {
         let shorter = (height - 40.0).max(120.0);
         let taller = (height + 40.0).min(900.0);
         let topmost = settings.window.always_on_top;
-        let maximized = self.state.read(cx).avatar_maximized;
 
         ui::section("Ventana", "Tamaño libre y visibilidad para OBS.").child(
             ui::card().child(
@@ -909,26 +890,6 @@ impl SettingsView {
                                             MouseButton::Left,
                                             cx.listener(|this, _: &MouseDownEvent, _, cx| {
                                                 window::show_avatar(&this.state, cx);
-                                            }),
-                                        ),
-                                    )
-                                    .child(
-                                        ui::button(
-                                            "fullscreen-avatar",
-                                            if maximized {
-                                                "Restaurar"
-                                            } else {
-                                                "Pantalla completa"
-                                            },
-                                        )
-                                        .on_mouse_down(
-                                            MouseButton::Left,
-                                            cx.listener(move |this, _: &MouseDownEvent, _, cx| {
-                                                window::set_avatar_fullscreen(
-                                                    &this.state,
-                                                    !maximized,
-                                                    cx,
-                                                );
                                             }),
                                         ),
                                     ),
@@ -1073,14 +1034,20 @@ impl Render for SettingsView {
                 .child(
                     div()
                         .id("settings-body")
-                        .flex()
                         .flex_1()
                         .min_w_0()
                         .min_h_0()
-                        .justify_center()
                         .overflow_y_scroll()
                         .track_scroll(&self.body_scroll)
-                        .child(div().w_full().p(px(24.)).child(content)),
+                        .child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .items_center()
+                                .w_full()
+                                .p(px(24.))
+                                .child(content),
+                        ),
                 )
                 .child(
                     div()
