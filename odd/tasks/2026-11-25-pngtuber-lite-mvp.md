@@ -1,7 +1,7 @@
 # PNGTuber Lite — plan ODD
 
 - **Resultado:** app PNGTuber ultraligera en Rust + GPUI, con overlay transparente, VAD por RMS y ajustes mínimos.
-- **Estado:** `checking` · Implementación completa 2026-11-25 · Verificación **solo por GitHub Actions** (sin build local)
+- **Estado:** `checking` · CI en verde (run `45727850849`) · Cierre pendiente de prueba humana, CPU/GPU/arranque y soak
 - **Fecha:** 2026-11-25 · **Proyecto:** `pngtuber-lite` (ex `gpui-hola-mundo`)
 - **Convenciones ODD:** las de `gentle-shell-gpui` (`crates/core/src/gentle_state.rs:149-203`): fases `authorizing · exploring · researching · deciding · planning · implementing · checking · closing`, `gentle_odd_phase` para fijarlas explícitamente y `odd/tasks/` como ubicación del plan (un `edit` ahí infiere `planning`).
 
@@ -199,16 +199,16 @@ Formato: una línea por slice, con el comando real y su salida. Sin salida no ha
 - **OD-04.** `features/audio`: hilo dueño con `recv_blocking`, comandos `Apply`/`RefreshDevices`, enumeración de dispositivos y stream cpal **dentro de ese hilo**; callback sin allocs, sin locks y sin reloj; RMS → dBFS → `Vad` → `try_send` solo al cambiar. Sensibilidad por `AtomicU8` (sin reconstruir el stream).
 - **OD-05.** Ajustes completos con piezas propias: PNG, lista de micrófonos con predeterminado, sensibilidad ±5, tamaño ±40 px, topmost, chip SILENCIO/HABLANDO, estado del micrófono, actualizar dispositivos y salir. Guardado automático; errores visibles.
 - **OD-06.** Primera ejecución sin PNG abre ajustes; el overlay vive aunque se cierre ajustes; clic derecho lo reabre; cambiar de dispositivo o de sensibilidad se aplica en caliente; *Salir* usa `cx.quit()`.
-- **OD-07.** Sin mediciones propias todavía: el protocolo está en `docs/benchmarks.md`, pero el `.exe` debe salir del CI. No se optimiza nada que no se haya medido.
-- **OD-08.** `Cargo.lock` regenerado con Cargo 1.99.1 (693 paquetes, sin `gpui-component` ni assets del Kit). Falta el run real de Actions (fmt, clippy, test, build) y el soak de 4 h.
+- **OD-07.** Medición parcial con el artefacto del CI (`pngtuber-lite.exe`, 11.433.984 B = 10,9 MiB): overlay 320×320 + ajustes abiertos, sin PNG → **WS 51,2 MB**, **privada 30,7 MB**, **17 hilos**. CPU, GPU y arranque quedan para la prueba humana: `WaitForInputIdle` no es fiable con esta app y no se inventa el número. El protocolo completo está en `docs/benchmarks.md`.
+- **OD-08.** CI en verde en el run [`45727850849`](https://github.com/roldyoran/gpui-hola-mundo/actions/runs/45727850849): `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` (12 tests) y `cargo build --release`; artefacto `pngtuber-lite-windows-x86_64` subido. `Cargo.lock` regenerado con Cargo 1.99.1 (693 paquetes, sin `gpui-component` ni assets del Kit). Faltan la prueba funcional del humano y el soak de 4 h.
 
 ## Cierre
 
 - [ ] S1–S12 con evidencia enlazada.
-- [ ] `docs/benchmarks.md` con antes/después y fecha.
-- [ ] `docs/architecture.md` y `docs/design-system.md` al día.
-- [ ] `README.md` con requisitos, primer arranque (sin avatar → ajustes) y clic derecho.
-- [ ] Sin `TODO`, `dbg!`, `unwrap()` en rutas de audio o ventana, ni `unsafe` fuera de `win32.rs`.
+- [x] `docs/benchmarks.md` con la medición parcial del CI y fecha.
+- [x] `docs/architecture.md` y `docs/design-system.md` al día.
+- [x] `README.md` con requisitos, primer arranque (sin avatar → ajustes) y clic derecho.
+- [x] Sin `TODO`, `dbg!`, `unwrap()` en rutas de audio o ventana, ni `unsafe` fuera de `win32.rs`.
 - [ ] Soak de 4 h registrado (RAM, hilos, handles al inicio y al final).
 - [ ] Riesgos residuales declarados (piso de GPUI incluido).
 
@@ -220,3 +220,4 @@ Formato: una línea por slice, con el comando real y su salida. Sin salida no ha
 - **L4.** Plan reescrito con el modelo ODD de `gentle-shell-gpui` (fases y `odd/tasks/`), sin mezclar formatos de otros repos.
 - **L5.** Aprobado para implementar. D5: sin builds locales; CI como único verificador. Se auditaron las firmas reales de `gpui-pre 0.3.14`, `cpal 0.18.2`, `rfd 0.18.0` y `windows 0.62.2` antes de escribir código.
 - **L6.** Pedido humano (2026-11-25): en la siguiente fase, usar los iconos de `gentle-shell-gpui` y alinear el sistema de diseño con el suyo. Queda como **OD-09**, fuera del MVP, para no mezclar alcance antes de cerrar la verificación del CI.
+- **L7.** CI en verde (run `45727850849`). El humano descargará el `.exe` y hará la prueba funcional; por eso se detiene la medición automática y no se registran CPU/GPU/arranque sin número real.

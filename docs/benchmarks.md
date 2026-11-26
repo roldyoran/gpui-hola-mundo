@@ -1,8 +1,6 @@
 # Benchmarks
 
-> **Estado:** pendiente de la primera build del CI. Este PC no compila, así que
-> no hay números propios todavía. La línea base de abajo es el binario del
-> proyecto de test (`gpui-hola-mundo`, 1000×700 con JPEG), no este producto.
+> **Estado:** el primer build del CI salió en verde (run `45727850849`, 2026-11-26): fmt, clippy, 12 tests, release y artefacto. La medición es parcial: RAM e hilos ya tienen número; CPU, GPU y arranque los valida el usuario con el `.exe` descargado.
 
 ## Límites del MVP
 
@@ -62,4 +60,4 @@ Sin número no hay optimización.
 | Fecha | Versión | Escenario | WS | Privada | CPU | GPU | Notas |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-11-25 | test base | 1000×700 JPEG | 47–57 MB | 36,3 MB | 1,20–1,41 % | — | referencia, no este producto |
-| — | MVP | overlay 320×320 | — | — | — | — | pendiente de CI |
+| 2026-11-26 | CI `d2e13c4` | overlay 320×320 + ajustes abiertos, sin PNG | 51,2 MB | 30,7 MB | pendiente | pendiente | 17 hilos; binario 11.433.984 B (10,9 MiB); `WaitForInputIdle` falló, arranque no medido; lo prueba el humano |
