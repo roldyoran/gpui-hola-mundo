@@ -144,6 +144,7 @@ Estados del `todo`: `pending` → `in_progress` → `done`. Cada slice termina c
 | **OD-07** | Medición y optimización justificada (downscale, perfil release, notificaciones) | `checking` → `deciding` si hay bifurcación | Antes/después documentado; nada optimizado sin número |
 | **OD-08** | Pruebas y release: fmt/clippy/tests, soak 4 h, CI, binario | `checking` → `closing` | S8–S12 con evidencia |
 | **OD-09** | **Siguiente fase:** UI shadcn oscura, controles con hover/active, medidor de nivel con umbral y composición de `gentle-shell-gpui` ([plan](2026-11-25-ui-shadcn.md)) | `implementing` → `checking` | Sin recortes, medidor en vivo, CI verde y presupuesto de binario re-medido |
+| **OD-10** | **Robustez del overlay:** arrastre sin bucle modal, tamaño libre, modo OBS y atajo global ([plan](2026-11-26-overlay-robustez.md)) | `implementing` → `checking` | Clics alternos sin cierre, ancho/alto separados, ocultar/mostrar y CI verde |
 
 ## Verificación
 

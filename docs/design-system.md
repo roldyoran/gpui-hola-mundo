@@ -42,7 +42,7 @@ sigue a `gentle-shell-gpui`. Todo sale de `src/shared/ui.rs`.
 - `switch(on)`: 36×20, knob de 16, animación de estado con color.
 - `list_row(selected)`: fila de micrófono con `radio()` y hover.
 - `segmented()` / `segment()`: presets de sensibilidad.
-- `meter(fill, threshold, speaking)`: barra de 10 px con relleno, umbral ámbar
+- `meter(fill, threshold, speaking)`: barra de 12 px con relleno, umbral ámbar
   y color de éxito al hablar.
 - `notice(message, color)`: aviso con tinte, descartable desde la vista.
 

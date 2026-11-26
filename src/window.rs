@@ -84,3 +84,19 @@ pub fn resize_avatar(state: &Entity<AppState>, cx: &mut App) {
         let _ = handle.update(cx, |_, window, _| window.resize(window_size));
     }
 }
+
+/// Saca el avatar de todos los monitores sin dejar de renderizar.
+pub fn park_avatar(state: &Entity<AppState>, cx: &mut App) {
+    let handle = state.read(cx).avatar_window;
+    if let Some(handle) = handle {
+        let _ = handle.update(cx, |_, window, _| crate::win32::park(window));
+    }
+}
+
+/// Devuelve el avatar a su última posición visible.
+pub fn show_avatar(state: &Entity<AppState>, cx: &mut App) {
+    let handle = state.read(cx).avatar_window;
+    if let Some(handle) = handle {
+        let _ = handle.update(cx, |_, window, _| crate::win32::show(window));
+    }
+}

@@ -38,7 +38,8 @@ Al no haber imágenes configuradas, se abre la ventana de ajustes:
 3. En **Nivel de audio**, habla y observa el medidor: la línea ámbar es el
    umbral. Ajusta **Sensibilidad** hasta que la etiqueta cambie entre
    `SILENCIO` y `HABLANDO` con tu voz normal, sin abrirse con ruido de fondo.
-4. Ajusta el **Tamaño** y, si quieres, desactiva **Siempre visible**.
+4. En **Ventana**, ajusta **Ancho** y **Alto** por separado y, si quieres,
+   desactiva **Siempre visible**.
 
 Los cambios se guardan solos en `%APPDATA%\pngtuber-lite\settings.json`, junto
 a una copia de los PNG en `avatars\`.
@@ -48,7 +49,15 @@ a una copia de los PNG en `avatars\`.
 - **Arrastrar:** botón izquierdo sobre el avatar.
 - **Abrir ajustes:** clic derecho sobre el avatar.
 - **Cerrar ajustes:** la X de la cabecera; el avatar sigue funcionando.
+- **Ocultar de la pantalla sin cerrar:** en **Ventana**, botón **Ocultar**.
+  El avatar se aparca fuera de los monitores y **sigue renderizando para OBS**.
+  **Mostrar** lo devuelve a su última posición.
+- **Atajo:** `Ctrl+Alt+P` alterna visible/aparcado sin abrir ajustes.
 - **Salir del todo:** botón **Salir de la app** en el pie de ajustes.
+
+> Minimizar con la barra de Windows congela la captura de OBS. Para OBS usa
+> **Ocultar**: la ventana se mueve fuera del escritorio pero sigue dibujando
+> frames.
 
 ## Presupuesto
 

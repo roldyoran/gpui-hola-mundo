@@ -116,16 +116,15 @@ impl AppState {
         self.persist();
     }
 
-    /// Cambia la altura y conserva la proporción actual de la ventana.
+    /// Cambia el ancho sin tocar el alto.
+    pub fn set_width(&mut self, width: f32) {
+        self.settings.window.width = width.clamp(120.0, 1200.0);
+        self.persist();
+    }
+
+    /// Cambia el alto sin tocar el ancho.
     pub fn set_height(&mut self, height: f32) {
-        let height = height.clamp(120.0, 900.0);
-        let ratio = if self.settings.window.height > 0.0 {
-            self.settings.window.width / self.settings.window.height
-        } else {
-            1.0
-        };
-        self.settings.window.height = height;
-        self.settings.window.width = (height * ratio).clamp(120.0, 1200.0);
+        self.settings.window.height = height.clamp(120.0, 900.0);
         self.persist();
     }
 
@@ -140,6 +139,13 @@ impl AppState {
 
     /// Guarda la posición y el tamaño reales que dejó el arrastre.
     pub fn set_bounds(&mut self, x: f32, y: f32, width: f32, height: f32) {
+        let unchanged = self.settings.window.x.is_some_and(|v| (v - x).abs() < 0.5)
+            && self.settings.window.y.is_some_and(|v| (v - y).abs() < 0.5)
+            && (self.settings.window.width - width).abs() < 0.5
+            && (self.settings.window.height - height).abs() < 0.5;
+        if unchanged {
+            return;
+        }
         self.settings.window.x = Some(x);
         self.settings.window.y = Some(y);
         self.settings.window.width = width;

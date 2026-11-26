@@ -27,8 +27,8 @@ flowchart TD
 | --- | --- | --- |
 | `src/main.rs` | `application().run`, rutas, ajustes, ventana del avatar, primer arranque | lógica de producto |
 | `src/app.rs` | `AppState`: ajustes, boca, estado de audio, handles; bomba canal → `notify` | dibujar ni decidir VAD |
-| `src/window.rs` | `WindowOptions` de overlay/ajustes, abrir ajustes, redimensionar | controles |
-| `src/win32.rs` | `ReleaseCapture` + `WM_NCLBUTTONDOWN`; `SetWindowPos` | reglas de negocio |
+| `src/window.rs` | `WindowOptions` de overlay/ajustes, abrir ajustes, redimensionar, aparcar/mostrar | controles |
+| `src/win32.rs` | arrastre manual con `SetWindowPos`, topmost, aparcado fuera de pantalla y atajo `Ctrl+Alt+P` | reglas de negocio |
 | `features/avatar` | validar/copiar PNG, decodificar una vez, render del overlay | conocer el audio |
 | `features/audio` | enumerar dispositivos, hilo dueño, stream cpal, VAD, eventos | tocar GPUI |
 | `features/settings` | esquema v1, rutas de datos, escritura atómica, UI | dibujar el avatar |
@@ -62,6 +62,10 @@ Stream WASAPI (cpal) ── callback: RMS → VAD → try_send solo al cambiar
 - Un cambio de boca produce **una** notificación; la vista observa `AppState`.
 - El medidor de nivel no usa el canal: lee un `AtomicU32` cada 45 ms mientras
   la ventana de ajustes está abierta. El overlay no se redibuja por el nivel.
+- El arrastre no usa el bucle modal de Windows: una tarea de GPUI lee el
+  cursor cada 16 ms y mueve el `HWND` con `SetWindowPos`. El hilo del atajo
+  global solo atiende `WM_HOTKEY` y mueve el mismo `HWND` fuera/dentro del
+  escritorio virtual.
 
 ## Flujo de datos
 

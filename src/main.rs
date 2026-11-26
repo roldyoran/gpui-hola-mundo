@@ -37,6 +37,7 @@ fn main() {
 
         let _ = avatar_window.update(cx, |_, window, _| {
             pngtuber_lite::win32::set_topmost(window, always_on_top);
+            pngtuber_lite::win32::install_hotkey(window);
         });
 
         if needs_setup {

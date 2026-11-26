@@ -24,6 +24,13 @@ const METER_FLOOR_DB: f32 = -60.0;
 /// Refresco del medidor mientras la ventana de ajustes existe.
 const METER_FRAME: Duration = Duration::from_millis(45);
 
+/// Eje que modifica un stepper de tamaño.
+#[derive(Clone, Copy)]
+enum SizeAxis {
+    Width,
+    Height,
+}
+
 pub struct SettingsView {
     state: Entity<AppState>,
     body_scroll: ScrollHandle,
@@ -113,6 +120,11 @@ impl SettingsView {
                 });
             }
         }
+    }
+
+    fn apply_width(&self, width: f32, cx: &mut Context<Self>) {
+        self.update_state(cx, move |state| state.set_width(width));
+        window::resize_avatar(&self.state, cx);
     }
 
     fn apply_height(&self, height: f32, cx: &mut Context<Self>) {
@@ -600,55 +612,125 @@ impl SettingsView {
         )
     }
 
+    fn size_stepper(
+        title: &'static str,
+        description: &'static str,
+        value: f32,
+        down_id: &'static str,
+        up_id: &'static str,
+        down: f32,
+        up: f32,
+        axis: SizeAxis,
+        cx: &mut Context<Self>,
+    ) -> Div {
+        div()
+            .flex()
+            .flex_row()
+            .items_center()
+            .justify_between()
+            .gap_3()
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap_1()
+                    .child(ui::label(title))
+                    .child(ui::hint(description)),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap_2()
+                    .child(ui::icon_button(down_id, "−").on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(move |this, _: &MouseDownEvent, _, cx| match axis {
+                            SizeAxis::Width => this.apply_width(down, cx),
+                            SizeAxis::Height => this.apply_height(down, cx),
+                        }),
+                    ))
+                    .child(ui::value_badge(format!("{} px", value.round() as i32)))
+                    .child(ui::icon_button(up_id, "+").on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(move |this, _: &MouseDownEvent, _, cx| match axis {
+                            SizeAxis::Width => this.apply_width(up, cx),
+                            SizeAxis::Height => this.apply_height(up, cx),
+                        }),
+                    )),
+            )
+    }
+
     fn window_section(&self, settings: &Settings, cx: &mut Context<Self>) -> Div {
+        let width = settings.window.width;
         let height = settings.window.height;
+        let narrower = (width - 40.0).max(120.0);
+        let wider = (width + 40.0).min(1200.0);
         let shorter = (height - 40.0).max(120.0);
         let taller = (height + 40.0).min(900.0);
         let topmost = settings.window.always_on_top;
 
-        ui::section(
-            "Ventana",
-            "Tamaño del avatar y comportamiento sobre el escritorio.",
-        )
-        .child(
+        ui::section("Ventana", "Tamaño libre y visibilidad para OBS.").child(
             ui::card().child(
                 ui::card_body()
+                    .child(Self::size_stepper(
+                        "Ancho",
+                        "Píxeles lógicos; el PNG se adapta.",
+                        width,
+                        "width-down",
+                        "width-up",
+                        narrower,
+                        wider,
+                        SizeAxis::Width,
+                        cx,
+                    ))
+                    .child(ui::divider())
+                    .child(Self::size_stepper(
+                        "Alto",
+                        "Píxeles lógicos; el PNG se adapta.",
+                        height,
+                        "height-down",
+                        "height-up",
+                        shorter,
+                        taller,
+                        SizeAxis::Height,
+                        cx,
+                    ))
+                    .child(ui::divider())
                     .child(
                         div()
                             .flex()
-                            .flex_row()
-                            .items_center()
-                            .justify_between()
-                            .gap_3()
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .gap_1()
-                                    .child(ui::label("Tamaño"))
-                                    .child(ui::hint("La proporción se conserva.")),
-                            )
+                            .flex_col()
+                            .gap_2()
+                            .child(ui::label("En mi pantalla"))
+                            .child(ui::hint(
+                                "Oculto sigue renderizando para OBS. Atajo: Ctrl+Alt+P.",
+                            ))
                             .child(
                                 div()
                                     .flex()
                                     .flex_row()
                                     .items_center()
                                     .gap_2()
-                                    .child(ui::icon_button("height-down", "−").on_mouse_down(
+                                    .child(ui::button("hide-avatar", "Ocultar").on_mouse_down(
                                         MouseButton::Left,
-                                        cx.listener(move |this, _: &MouseDownEvent, _, cx| {
-                                            this.apply_height(shorter, cx)
+                                        cx.listener(|this, _: &MouseDownEvent, _, cx| {
+                                            window::park_avatar(&this.state, cx);
                                         }),
                                     ))
-                                    .child(ui::value_badge(format!("{} px", height.round() as i32)))
-                                    .child(ui::icon_button("height-up", "+").on_mouse_down(
-                                        MouseButton::Left,
-                                        cx.listener(move |this, _: &MouseDownEvent, _, cx| {
-                                            this.apply_height(taller, cx)
-                                        }),
-                                    )),
+                                    .child(
+                                        ui::primary_button("show-avatar", "Mostrar").on_mouse_down(
+                                            MouseButton::Left,
+                                            cx.listener(|this, _: &MouseDownEvent, _, cx| {
+                                                window::show_avatar(&this.state, cx);
+                                            }),
+                                        ),
+                                    ),
                             ),
                     )
+                    .child(ui::hint(
+                        "Minimizar congela la captura de OBS; «Ocultar» la mantiene activa.",
+                    ))
                     .child(ui::divider())
                     .child(
                         div()
