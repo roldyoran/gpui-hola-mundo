@@ -78,7 +78,7 @@ avatar; el overlay real no existe hasta pulsar **Mostrar**. Además:
 
 ## Evidencia
 
-- CI en verde en el run [`45740820917`](https://github.com/roldyoran/gpui-hola-mundo/actions/runs/45740820917):
+- CI en verde en el run [`45740820917`](https://github.com/roldyoran/pngtuber-lite/actions/runs/45740820917):
   `fmt`, `clippy --all-targets -- -D warnings`, tests y release. Artefacto
   `pngtuber-lite-windows-x86_64` (11.685.376 B = 11,1 MiB).
 - Cabecera PE del `.exe` del run: `SUBSYSTEM = 2` (`WINDOWS_GUI`), no `3`

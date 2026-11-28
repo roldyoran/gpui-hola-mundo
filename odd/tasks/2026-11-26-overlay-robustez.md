@@ -65,7 +65,7 @@
 
 ## Evidencia
 
-- CI en verde en el run [`45734803073`](https://github.com/roldyoran/gpui-hola-mundo/actions/runs/45734803073):
+- CI en verde en el run [`45734803073`](https://github.com/roldyoran/pngtuber-lite/actions/runs/45734803073):
   `fmt`, `clippy --all-targets -- -D warnings`, tests y release; artefacto
   `pngtuber-lite-windows-x86_64` (11.640.320 B = 11,1 MiB).
 - Arranque aislado con `%APPDATA%` temporal: el proceso sigue vivo, abre la

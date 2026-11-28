@@ -248,7 +248,7 @@ cerrar: `docs/architecture.md`, `docs/design-system.md` y `README.md` al día.
   `Devices`/`Status` cuentan como cambio haber limpiado `devices_error` o
   `audio_error`; se quita el espacio inicial de la continuación de Notas en
   el `README`. Verificación pendiente del CI de GitHub Actions.
-- **L7.** CI en verde (run [`46101092930`](https://github.com/roldyoran/gpui-hola-mundo/actions/runs/46101092930),
+- **L7.** CI en verde (run [`46101092930`](https://github.com/roldyoran/pngtuber-lite/actions/runs/46101092930),
   8m20s): `fmt`, `clippy -D warnings`, 13 tests, `build --release` y artefacto
   `pngtuber-lite-windows-x86_64` (4.711.535 B). El `.exe` descargado mide
   11.699.200 B (11,2 MiB). Pendiente la prueba humana en OBS con WGC

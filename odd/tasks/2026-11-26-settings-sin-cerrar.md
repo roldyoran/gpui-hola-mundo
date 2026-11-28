@@ -43,7 +43,7 @@ salida real.
 
 ## Evidencia
 
-- CI en verde en el run [`45736058660`](https://github.com/roldyoran/gpui-hola-mundo/actions/runs/45736058660):
+- CI en verde en el run [`45736058660`](https://github.com/roldyoran/pngtuber-lite/actions/runs/45736058660):
   `fmt`, `clippy --all-targets -- -D warnings`, tests y release. Artefacto
   `pngtuber-lite-windows-x86_64` (11.643.392 B = 11,1 MiB).
 - Prueba Win32 sobre el `.exe` del CI, con `%APPDATA%` aislado:
