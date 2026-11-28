@@ -510,9 +510,13 @@ mod imp {
             let Ok(module) = GetModuleHandleW(None) else {
                 return;
             };
+            // ID 1 del recurso que escribe `set_icon`: puntero sin procedencia
+            // con valor 1 (`dangling` daría 2 y `as` desde entero dispara
+            // `manual_dangling_ptr`).
+            let icon_id = PCWSTR(std::ptr::without_provenance::<u16>(1));
             let grande = LoadImageW(
                 Some(HINSTANCE(module.0)),
-                PCWSTR(1 as *const u16),
+                icon_id,
                 IMAGE_ICON,
                 GetSystemMetrics(SM_CXICON),
                 GetSystemMetrics(SM_CYICON),
@@ -520,7 +524,7 @@ mod imp {
             );
             let pequeno = LoadImageW(
                 Some(HINSTANCE(module.0)),
-                PCWSTR(1 as *const u16),
+                icon_id,
                 IMAGE_ICON,
                 GetSystemMetrics(SM_CXSMICON),
                 GetSystemMetrics(SM_CYSMICON),
