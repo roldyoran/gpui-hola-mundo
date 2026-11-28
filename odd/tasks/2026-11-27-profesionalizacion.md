@@ -1,6 +1,6 @@
 # Profesionalización: icono, metadatos, borde y nombre
 
-- **Estado:** `checking` · implementado en el working tree; CI pendiente de push
+- **Estado:** `checking` · CI verde (run `46104090583`); pendiente prueba humana de OBS/WGC, icono y versión
 - **Fecha:** 2026-11-27
 - **Origen:** prueba humana de OBS (WGC funciona; aparece un borde grisáceo) y
   pedido de dejar el proyecto como una aplicación de escritorio terminada.
@@ -74,13 +74,20 @@
 
 ## Evidencia
 
-- Icono generado y verificado visualmente a 256 px.
-- Implementado en el working tree (sin commit): DWM sin borde ni esquinas en
-  `prepare_capture`, `build.rs` + `winresource`, icono en ambas ventanas,
-  versión en la cabecera, `Cargo.toml` con metadatos, README con icono/badge/
-  licencia, `LICENSE` MIT, docs al día y URLs de `odd/tasks` al repo nuevo.
-- Pendiente: CI del push con `build.rs`/`winresource` y prueba humana de OBS
-  sin borde, del icono y de la versión.
+- Icono generado y verificado visualmente a 256 px; el ICO se extrajo del
+  `.exe` final y se comprobó que Windows lo lee.
+- CI en verde (run [`46104090583`](https://github.com/roldyoran/pngtuber-lite/actions/runs/46104090583)):
+  fmt, clippy, 13 tests, release y artefacto `pngtuber-lite-windows-x86_64`
+  (4.733.703 B). `.exe`: **12.062.208 B (11,5 MiB)**, dentro del límite.
+- Metadatos PE verificados con `FileVersionInfo`:
+  `ProductName=PNGTuber Lite`, `FileDescription=PNGTuber Lite - overlay
+  PNGTuber ultraligero`, `FileVersion=ProductVersion=0.1.0`,
+  `OriginalFilename=pngtuber-lite.exe`, `LegalCopyright=MIT - roldyoran`.
+- El primer push falló en clippy (`manual_dangling_ptr` en el cast del ID de
+  recurso); se corrigió con `std::ptr::without_provenance::<u16>(1)` y el
+  segundo run salió en verde.
+- Pendiente: prueba humana en OBS/WGC sin borde, icono en Explorer/barra de
+  tareas/Alt+Tab y versión en la cabecera.
 
 ## Riesgos
 
@@ -114,3 +121,9 @@
   `LICENSE`, `architecture.md` y `development.md` al día, URLs de
   `odd/tasks` al repo nuevo). Firmas contrastadas en `~/.cargo/registry`
   (windows 0.62.2, winresource 0.1.34). Pendiente: CI y prueba humana.
+- **L5.** CI verde en el run
+  [`46104090583`](https://github.com/roldyoran/pngtuber-lite/actions/runs/46104090583)
+  (commit `d4e3b6f`): fmt, clippy, 13 tests, release y artefacto. El `.exe`
+  mide 12.062.208 B (11,5 MiB); `FileVersionInfo` y el icono embebido se
+  verificaron sobre el artefacto descargado. Pendiente la prueba humana de
+  OBS/WGC sin borde, icono y versión.
