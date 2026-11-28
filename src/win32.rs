@@ -62,17 +62,24 @@ mod imp {
 
     use gpui_kit::Window;
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-    use windows::Win32::Foundation::{HWND, POINT, RECT};
+    use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, POINT, RECT, WPARAM};
+    use windows::Win32::Graphics::Dwm::{
+        DWMWA_BORDER_COLOR, DWMWA_COLOR_NONE, DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_DONOTROUND,
+        DwmSetWindowAttribute,
+    };
     use windows::Win32::System::Com::{CLSCTX_INPROC_SERVER, CoCreateInstance};
+    use windows::Win32::System::LibraryLoader::GetModuleHandleW;
     use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
     use windows::Win32::UI::Shell::{ITaskbarList, TaskbarList};
     use windows::Win32::UI::WindowsAndMessaging::{
         DeleteMenu, DrawMenuBar, GWL_EXSTYLE, GetCursorPos, GetSystemMenu, GetSystemMetrics,
-        GetWindowLongPtrW, GetWindowRect, HWND_NOTOPMOST, HWND_TOP, HWND_TOPMOST, MF_BYCOMMAND,
-        SC_CLOSE, SM_CXVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SWP_FRAMECHANGED,
-        SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SetWindowLongPtrW, SetWindowPos,
-        WS_EX_TOOLWINDOW,
+        GetWindowLongPtrW, GetWindowRect, HWND_NOTOPMOST, HWND_TOP, HWND_TOPMOST, ICON_BIG,
+        ICON_SMALL, IMAGE_ICON, LR_SHARED, LoadImageW, MF_BYCOMMAND, SC_CLOSE, SM_CXICON,
+        SM_CXSMICON, SM_CXVIRTUALSCREEN, SM_CYICON, SM_CYSMICON, SM_XVIRTUALSCREEN,
+        SM_YVIRTUALSCREEN, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
+        SendMessageW, SetWindowLongPtrW, SetWindowPos, WM_SETICON, WS_EX_TOOLWINDOW,
     };
+    use windows::core::PCWSTR;
 
     use super::{DragStep, ResizeEdge};
 
@@ -429,9 +436,10 @@ mod imp {
     /// Prepara el overlay para que OBS lo liste en Captura de ventana.
     ///
     /// Quita `WS_EX_TOOLWINDOW` (OBS filtra esas ventanas al poblar el
-    /// desplegable) y oculta el botón de la barra de tareas con
-    /// `ITaskbarList::DeleteTab`. No cambia el aspecto ni el orden Z: quien
-    /// llama reaplica `set_topmost` y `raise` después.
+    /// desplegable), quita el borde y las esquinas redondeadas de DWM que WGC
+    /// entrega como reborde grisáceo, y oculta el botón de la barra de tareas
+    /// con `ITaskbarList::DeleteTab`. No cambia el aspecto ni el orden Z:
+    /// quien llama reaplica `set_topmost` y `raise` después.
     pub fn prepare_capture(window: &Window) {
         let Some(hwnd) = hwnd(window) else {
             return;
@@ -454,6 +462,26 @@ mod imp {
                 );
             }
         }
+        // SAFETY: `hwnd` es válido y los punteros apuntan a variables locales
+        // que siguen vivas durante cada llamada; `size_of_val` describe su
+        // tamaño exacto. En Windows 10 estos atributos no existen y la llamada
+        // devuelve error, que se ignora.
+        unsafe {
+            let sin_borde: u32 = DWMWA_COLOR_NONE;
+            let _ = DwmSetWindowAttribute(
+                hwnd,
+                DWMWA_BORDER_COLOR,
+                &sin_borde as *const _ as *const c_void,
+                std::mem::size_of_val(&sin_borde) as u32,
+            );
+            let sin_curva = DWMWCP_DONOTROUND;
+            let _ = DwmSetWindowAttribute(
+                hwnd,
+                DWMWA_WINDOW_CORNER_PREFERENCE,
+                &sin_curva as *const _ as *const c_void,
+                std::mem::size_of_val(&sin_curva) as u32,
+            );
+        }
         // SAFETY: GPUI ya inicializó COM con `OleInitialize` en el hilo
         // principal; `DeleteTab` solo oculta el botón de esta ventana. Si COM
         // no está disponible se ignora y se acepta el botón en la barra.
@@ -464,6 +492,55 @@ mod imp {
                 let _ = list.HrInit();
                 let _ = list.DeleteTab(hwnd);
             }
+        }
+    }
+
+    /// Fija el icono de la ventana (barra de tareas y Alt+Tab) desde el
+    /// recurso `1` que `build.rs` embebe con `winresource`. Carga por separado
+    /// el tamaño grande y el pequeño que indica el sistema.
+    pub fn set_window_icon(window: &Window) {
+        let Some(hwnd) = hwnd(window) else {
+            return;
+        };
+        // SAFETY: `hwnd` y el módulo pertenecen a este proceso;
+        // `GetSystemMetrics` solo lee métricas del sistema; `LoadImageW`
+        // devuelve `HANDLE` compartidos (`LR_SHARED`) que no se destruyen.
+        // `PCWSTR(1)` es el ID del recurso que escribe `set_icon`.
+        unsafe {
+            let Ok(module) = GetModuleHandleW(None) else {
+                return;
+            };
+            let grande = LoadImageW(
+                Some(HINSTANCE(module.0)),
+                PCWSTR(1 as *const u16),
+                IMAGE_ICON,
+                GetSystemMetrics(SM_CXICON),
+                GetSystemMetrics(SM_CYICON),
+                LR_SHARED,
+            );
+            let pequeno = LoadImageW(
+                Some(HINSTANCE(module.0)),
+                PCWSTR(1 as *const u16),
+                IMAGE_ICON,
+                GetSystemMetrics(SM_CXSMICON),
+                GetSystemMetrics(SM_CYSMICON),
+                LR_SHARED,
+            );
+            let (Ok(grande), Ok(pequeno)) = (grande, pequeno) else {
+                return;
+            };
+            let _ = SendMessageW(
+                hwnd,
+                WM_SETICON,
+                Some(WPARAM(ICON_BIG as usize)),
+                Some(LPARAM(grande.0 as isize)),
+            );
+            let _ = SendMessageW(
+                hwnd,
+                WM_SETICON,
+                Some(WPARAM(ICON_SMALL as usize)),
+                Some(LPARAM(pequeno.0 as isize)),
+            );
         }
     }
 
@@ -500,7 +577,7 @@ mod imp {
 #[cfg(windows)]
 pub use imp::{
     begin_drag, begin_resize, disable_close, drag_step, park, prepare_capture, raise,
-    remember_origin, resize_step, set_topmost, show,
+    remember_origin, resize_step, set_topmost, set_window_icon, show,
 };
 
 #[cfg(not(windows))]
@@ -538,6 +615,9 @@ pub fn resize_step() -> Option<DragStep> {
 
 #[cfg(not(windows))]
 pub fn set_topmost(_window: &gpui_kit::Window, _always_on_top: bool) {}
+
+#[cfg(not(windows))]
+pub fn set_window_icon(_window: &gpui_kit::Window) {}
 
 #[cfg(not(windows))]
 pub fn prepare_capture(_window: &gpui_kit::Window) {}

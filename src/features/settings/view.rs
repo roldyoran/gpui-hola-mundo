@@ -208,7 +208,10 @@ impl SettingsView {
                                 .text_color(ui::fg())
                                 .child("PNGTuber Lite"),
                         )
-                        .child(ui::hint("Overlay transparente · detección por RMS")),
+                        .child(ui::hint(concat!(
+                            "Overlay transparente · detección por RMS · v",
+                            env!("CARGO_PKG_VERSION")
+                        ))),
                 ),
         )
     }

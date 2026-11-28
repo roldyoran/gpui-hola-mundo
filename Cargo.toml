@@ -4,6 +4,13 @@ version = "0.1.0"
 edition = "2024"
 description = "PNGTuber ultraligero: overlay transparente y VAD por RMS con GPUI"
 license = "MIT"
+build = "build.rs"
+authors = ["roldyoran"]
+readme = "README.md"
+repository = "https://github.com/roldyoran/pngtuber-lite"
+homepage = "https://github.com/roldyoran/pngtuber-lite"
+keywords = ["pngtuber", "vtuber", "overlay", "obs", "gpui"]
+categories = ["multimedia::video", "gui"]
 
 [dependencies]
 # GPUI + plataforma, sin la librería de componentes ni los assets del Kit.
@@ -35,7 +42,14 @@ windows = { version = "0.62", features = [
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_UI_Shell",
     "Win32_System_Com",
+    "Win32_Graphics_Dwm",
+    "Win32_System_LibraryLoader",
 ] }
+
+# Recurso PE (icono y metadatos del .exe con rc.exe del Windows SDK).
+# Solo corre en target Windows; hereda la versión de Cargo.toml.
+[build-dependencies]
+winresource = "0.1.34"
 
 [profile.release]
 # Binario pequeño y arranque rápido; el CI es quien compila.

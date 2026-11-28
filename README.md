@@ -1,4 +1,8 @@
+<p align="center"><img src="assets/icon.svg" width="96" height="96" alt="Icono de PNGTuber Lite"></p>
+
 # PNGTuber Lite
+
+[![Build](https://github.com/roldyoran/pngtuber-lite/actions/workflows/build.yml/badge.svg)](https://github.com/roldyoran/pngtuber-lite/actions/workflows/build.yml)
 
 Overlay de escritorio ultraligero para un avatar PNGTuber: una ventana
 transparente, sin bordes y siempre visible encima del escritorio, que abre y
@@ -87,6 +91,10 @@ Notas: el overlay no muestra botón en la barra de tareas, pero puede aparecer
 en Alt+Tab (limitación conocida de quitar `WS_EX_TOOLWINDOW`). Con **Ocultar**
 el avatar se aparca fuera de los monitores y OBS lo sigue capturando.
 
+> Si con WGC quedara una línea de 1 px en el borde, activá **Client Area**
+> en las propiedades de la fuente de OBS: la app ya quita el borde DWM y las
+> esquinas redondeadas en Windows 11.
+
 ## Presupuesto
 
 El objetivo del proyecto es medido, no supuesto. Límites del MVP en
@@ -119,4 +127,4 @@ src/
 
 ## Licencia
 
-MIT. El binario no empaqueta fuentes ni iconos de terceros.
+MIT — ver [LICENSE](LICENSE). El binario no empaqueta fuentes ni iconos de terceros.

@@ -28,7 +28,7 @@ flowchart TD
 | `src/main.rs` | `application().run`, rutas, ajustes y apertura inicial de la ventana de ajustes. Nunca crea el overlay. | lógica de producto |
 | `src/app.rs` | `AppState`: ajustes, boca, estado de audio, handles y flag de aparcado; bomba canal → `notify` | dibujar ni decidir VAD |
 | `src/window.rs` | `WindowOptions` de overlay/ajustes, abrir ajustes, crear el overlay al pulsar **Mostrar**, redimensionar y aparcar/mostrar | controles |
-| `src/win32.rs` | arrastre y redimensionado manuales con `SetWindowPos`, topmost, traer al frente, aparcado fuera de pantalla, `SC_CLOSE` deshabilitado y preparación para OBS (`prepare_capture`: quita `WS_EX_TOOLWINDOW` y oculta el botón de la barra con `ITaskbarList`) | reglas de negocio |
+| `src/win32.rs` | arrastre y redimensionado manuales con `SetWindowPos`, topmost, traer al frente, aparcado fuera de pantalla, `SC_CLOSE` deshabilitado, preparación para OBS (`prepare_capture`: quita `WS_EX_TOOLWINDOW`, quita el borde y las esquinas DWM, oculta el botón de la barra con `ITaskbarList`) e icono de ventana (`set_window_icon` con `WM_SETICON`) | reglas de negocio |
 | `features/avatar` | validar/copiar PNG, decodificar una vez, render del overlay y zonas de resize | conocer el audio |
 | `features/audio` | enumerar dispositivos, hilo dueño, stream cpal, VAD, eventos | tocar GPUI |
 | `features/settings` | esquema v1, rutas de datos, escritura atómica, UI y previsualización lateral | dibujar el overlay real |
@@ -71,10 +71,14 @@ Stream WASAPI (cpal) ── callback: RMS → VAD → try_send solo al cambiar
   texturas ya decodificadas de `AppState`; no crea una segunda ventana, no
   duplica el stream y no vuelve a decodificar los PNG.
 - Cada ventana tiene título único (`PNGTuber Lite · avatar` y
-  `PNGTuber Lite · ajustes`) para que OBS las distinga. Al crear el overlay
-  se fija el título, se llama a `win32::prepare_capture` y después se
-  reaplican `set_topmost` y `raise`; el overlay puede aparecer en Alt+Tab,
-  pero no deja botón en la barra de tareas.
+  `PNGTuber Lite · ajustes`) para que OBS las distinga, y ambas reciben el
+  icono con `win32::set_window_icon`. Al crear el overlay se fija el título
+  y el icono, se llama a `win32::prepare_capture` y después se reaplican
+  `set_topmost` y `raise`; el overlay puede aparecer en Alt+Tab, pero no deja
+  botón en la barra de tareas.
+- El icono del `.exe` y sus metadatos son un recurso PE: `build.rs` compila
+  `assets/icon.ico` con `winresource` (`rc.exe` del Windows SDK). La versión
+  que muestra la cabecera de ajustes sale de `CARGO_PKG_VERSION`.
 - La ventana de ajustes no se cierra: `on_window_should_close` devuelve
   `false` y `SC_CLOSE` se elimina del menú del sistema. El botón **Salir de la
   app** es la única salida; minimizar/maximizar siguen siendo nativos.

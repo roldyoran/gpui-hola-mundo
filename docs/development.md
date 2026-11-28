@@ -55,3 +55,27 @@ El binario de release no abre consola. Los errores recuperables (PNG inválido,
 micrófono ocupado o desconectado) se muestran en la ventana de ajustes. Para
 ver el detalle completo, ejecuta el `.exe` desde PowerShell y observa el
 diálogo de ajustes; no hay `println!` en el código de producto.
+
+## Recursos de Windows
+
+El icono y los metadatos del `.exe` se embeben en tiempo de compilación:
+
+- `build.rs` compila `assets/icon.ico` con `winresource 0.1.34` (usa `rc.exe`
+  del Windows SDK, ya presente en el runner `windows-latest` con MSVC). Solo
+  corre en target Windows; en otras plataformas no hace nada.
+- `assets/icon.ico` es el ICO multi-tamaño que se embebe; `assets/icon.svg`
+  es la fuente y `assets/icon.png` la referencia.
+- `win32::set_window_icon` fija ese mismo icono en cada ventana con
+  `WM_SETICON` (`ICON_BIG`/`ICON_SMALL`).
+
+Para regenerar el icono tras editar `assets/icon.svg`:
+
+```text
+python tools/make_icon.py
+```
+
+…o, con `uv` (requiere Pillow):
+
+```text
+uv run --with pillow python tools/make_icon.py
+```
