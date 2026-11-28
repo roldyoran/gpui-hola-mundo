@@ -78,14 +78,14 @@ impl AppState {
             .closed
             .as_ref()
             .and_then(|relative| self.paths.avatar_bytes(relative))
-            .and_then(|bytes| decode_png(&bytes));
+            .and_then(decode_png);
         let open = self
             .settings
             .avatar
             .open
             .as_ref()
             .and_then(|relative| self.paths.avatar_bytes(relative))
-            .and_then(|bytes| decode_png(&bytes));
+            .and_then(decode_png);
         self.avatar_closed = closed;
         self.avatar_open = open;
     }
@@ -123,47 +123,75 @@ impl AppState {
     }
 
     pub fn set_audio_enabled(&mut self, enabled: bool) {
+        if self.settings.audio.enabled == enabled {
+            return;
+        }
         self.settings.audio.enabled = enabled;
         self.persist();
         self.apply_audio();
     }
 
     pub fn set_device(&mut self, device_id: Option<String>) {
+        if self.settings.audio.device_id == device_id {
+            return;
+        }
         self.settings.audio.device_id = device_id;
         self.persist();
         self.apply_audio();
     }
 
     pub fn set_sensitivity(&mut self, sensitivity: u8) {
-        self.settings.audio.sensitivity = sensitivity.min(100);
+        let sensitivity = sensitivity.min(100);
+        if self.settings.audio.sensitivity == sensitivity {
+            return;
+        }
+        self.settings.audio.sensitivity = sensitivity;
         self.persist();
         self.apply_audio();
     }
 
     pub fn set_always_on_top(&mut self, always_on_top: bool) {
+        if self.settings.window.always_on_top == always_on_top {
+            return;
+        }
         self.settings.window.always_on_top = always_on_top;
         self.persist();
     }
 
     /// Cambia el ancho sin tocar el alto.
     pub fn set_width(&mut self, width: f32) {
-        self.settings.window.width = width.clamp(120.0, 1200.0);
+        let width = width.clamp(120.0, 1200.0);
+        if self.settings.window.width.to_bits() == width.to_bits() {
+            return;
+        }
+        self.settings.window.width = width;
         self.persist();
     }
 
     /// Cambia el alto sin tocar el ancho.
     pub fn set_height(&mut self, height: f32) {
-        self.settings.window.height = height.clamp(120.0, 900.0);
+        let height = height.clamp(120.0, 900.0);
+        if self.settings.window.height.to_bits() == height.to_bits() {
+            return;
+        }
+        self.settings.window.height = height;
         self.persist();
     }
 
     pub fn set_avatar(&mut self, slot: AvatarSlot, relative: String) {
+        let changed = match slot {
+            AvatarSlot::Closed => self.settings.avatar.closed.as_deref() != Some(relative.as_str()),
+            AvatarSlot::Open => self.settings.avatar.open.as_deref() != Some(relative.as_str()),
+        };
         match slot {
             AvatarSlot::Closed => self.settings.avatar.closed = Some(relative),
             AvatarSlot::Open => self.settings.avatar.open = Some(relative),
         }
+        // El archivo pudo cambiar aunque la ruta sea la misma: recargar siempre.
         self.reload_avatars();
-        self.persist();
+        if changed {
+            self.persist();
+        }
     }
 
     /// Guarda la posición y el tamaño reales que dejó el arrastre.
@@ -190,16 +218,21 @@ impl AppState {
                 changed
             }
             AudioEvent::Status(status) => {
-                if !matches!(&status, AudioStatus::Error(_)) {
-                    self.audio_error = None;
-                }
-                let changed = self.audio_status != status;
+                let limpio = if matches!(&status, AudioStatus::Error(_)) {
+                    false
+                } else {
+                    self.audio_error.take().is_some()
+                };
+                let changed = limpio || self.audio_status != status;
                 self.audio_status = status;
                 changed
             }
             AudioEvent::Devices(list) => {
+                let habia_error = self.devices_error.take().is_some();
+                if self.devices == list {
+                    return habia_error;
+                }
                 self.devices = list;
-                self.devices_error = None;
                 true
             }
             AudioEvent::DevicesError(message) => {
@@ -215,11 +248,18 @@ impl AppState {
 }
 
 /// Drena eventos de audio hasta que se cierre el canal o muera el estado.
+///
+/// Tras el primer `recv`, vacía con `try_recv` y aplica el lote en orden con
+/// una sola notificación.
 async fn drain_audio(events: Receiver<AudioEvent>, this: WeakEntity<AppState>, cx: &mut AsyncApp) {
-    while let Ok(event) = events.recv().await {
+    while let Ok(first) = events.recv().await {
         let alive = this
             .update(cx, |state, cx| {
-                if state.on_audio_event(event) {
+                let mut changed = state.on_audio_event(first);
+                while let Ok(event) = events.try_recv() {
+                    changed |= state.on_audio_event(event);
+                }
+                if changed {
                     cx.notify();
                 }
             })

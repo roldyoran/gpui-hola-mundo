@@ -8,7 +8,8 @@ pub mod view;
 
 pub use view::AvatarView;
 
-use std::fs;
+use std::fs::{self, File};
+use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -48,28 +49,45 @@ pub fn is_png(bytes: &[u8]) -> bool {
 }
 
 /// Valida y copia un PNG al directorio de datos. Devuelve la ruta relativa.
+///
+/// Solo lee los 8 bytes de la firma; el archivo se copia con `fs::copy` sin
+/// cargarlo entero en memoria.
 pub fn import_png(paths: &Paths, source: &Path, slot: AvatarSlot) -> Result<String> {
-    let bytes =
-        fs::read(source).with_context(|| format!("no se pudo leer {}", source.display()))?;
-    if !is_png(&bytes) {
+    let mut header = [0u8; PNG_SIGNATURE.len()];
+    let mut file =
+        File::open(source).with_context(|| format!("no se pudo leer {}", source.display()))?;
+    let file_len = file
+        .metadata()
+        .with_context(|| format!("no se pudo leer {}", source.display()))?
+        .len();
+    if file.read_exact(&mut header).is_err()
+        || file_len <= PNG_SIGNATURE.len() as u64
+        || !header.starts_with(&PNG_SIGNATURE)
+    {
         bail!("el archivo no es un PNG válido");
     }
     paths.ensure()?;
     let relative = format!("avatars/{}", slot.file_name());
-    fs::write(paths.dir.join(&relative), &bytes)
-        .with_context(|| "no se pudo copiar el PNG al directorio de datos")?;
+    let destino = paths.dir.join(&relative);
+    let mismo = source
+        .canonicalize()
+        .ok()
+        .zip(destino.canonicalize().ok())
+        .is_some_and(|(origen, existe)| origen == existe);
+    if !mismo {
+        fs::copy(source, &destino)
+            .with_context(|| "no se pudo copiar el PNG al directorio de datos")?;
+    }
     Ok(relative)
 }
 
-/// Decodifica un PNG en memoria. `None` si no es un PNG reconocible.
-pub fn decode_png(bytes: &[u8]) -> Option<Arc<Image>> {
-    if !is_png(bytes) {
+/// Decodifica un PNG en memoria. Consume el `Vec` para no copiarlo. `None`
+/// si no es un PNG reconocible.
+pub fn decode_png(bytes: Vec<u8>) -> Option<Arc<Image>> {
+    if !is_png(&bytes) {
         return None;
     }
-    Some(Arc::new(Image::from_bytes(
-        ImageFormat::Png,
-        bytes.to_vec(),
-    )))
+    Some(Arc::new(Image::from_bytes(ImageFormat::Png, bytes)))
 }
 
 #[cfg(test)]
@@ -88,6 +106,11 @@ mod tests {
     #[test]
     fn acepta_un_png_real() {
         assert!(is_png(TINY_PNG));
+    }
+
+    #[test]
+    fn la_firma_sola_no_alcanza() {
+        assert!(!is_png(&PNG_SIGNATURE));
     }
 
     #[test]

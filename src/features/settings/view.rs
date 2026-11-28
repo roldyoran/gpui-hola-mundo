@@ -23,6 +23,8 @@ const MAX_DEVICE_ROWS: usize = 4;
 const METER_FLOOR_DB: f32 = -60.0;
 /// Refresco del medidor mientras la ventana de ajustes existe.
 const METER_FRAME: Duration = Duration::from_millis(45);
+/// Pausa del ticker cuando el audio no está capturando.
+const METER_IDLE_FRAME: Duration = Duration::from_millis(500);
 
 /// Eje que modifica un stepper de tamaño.
 #[derive(Clone, Copy)]
@@ -59,6 +61,27 @@ impl SettingsView {
         let observed = cx.observe(&state, |_, _, cx| cx.notify());
         let ticker = cx.spawn(async move |this, cx| {
             loop {
+                let running = this
+                    .update(cx, |view, cx| {
+                        matches!(view.state.read(cx).audio_status, AudioStatus::Running(_))
+                    })
+                    .unwrap_or(false);
+                if !running {
+                    // Sin captura: fijar el suelo una sola vez y dormir largo.
+                    let alive = this
+                        .update(cx, |view, cx| {
+                            if view.display_db.to_bits() != METER_FLOOR_DB.to_bits() {
+                                view.display_db = METER_FLOOR_DB;
+                                cx.notify();
+                            }
+                        })
+                        .is_ok();
+                    if !alive {
+                        break;
+                    }
+                    cx.background_executor().timer(METER_IDLE_FRAME).await;
+                    continue;
+                }
                 cx.background_executor().timer(METER_FRAME).await;
                 let alive = this
                     .update(cx, |view, cx| {
@@ -97,7 +120,7 @@ impl SettingsView {
         } else {
             self.display_db += (instant - self.display_db) * 0.22;
         }
-        (self.display_db - previous).abs() > 0.05
+        (self.display_db - previous).abs() > 0.25
     }
 
     fn update_state(&self, cx: &mut Context<Self>, update: impl FnOnce(&mut AppState)) {
@@ -105,7 +128,6 @@ impl SettingsView {
             update(state);
             cx.notify();
         });
-        cx.notify();
     }
 
     fn refresh_devices(&self, cx: &mut Context<Self>) {
