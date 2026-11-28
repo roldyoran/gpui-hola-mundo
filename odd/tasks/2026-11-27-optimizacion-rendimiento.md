@@ -1,6 +1,6 @@
 # Optimización de rendimiento y código
 
-- **Estado:** `checking` · OD-14r, OD-15, OD-17 y OD-20 implementados en el working tree, pendientes de CI
+- **Estado:** `checking` · OD-14r, OD-15, OD-17 y OD-20 implementados; CI verde (run `46101092930`); pendiente prueba humana de OBS/WGC y medición
 - **Fecha:** 2026-11-27
 - **Origen:** revisión de rendimiento pedida por el humano + incidencia de captura en OBS
 - **Fase anterior:** [`2026-11-26-overlay-robustez.md`](2026-11-26-overlay-robustez.md)
@@ -248,3 +248,9 @@ cerrar: `docs/architecture.md`, `docs/design-system.md` y `README.md` al día.
   `Devices`/`Status` cuentan como cambio haber limpiado `devices_error` o
   `audio_error`; se quita el espacio inicial de la continuación de Notas en
   el `README`. Verificación pendiente del CI de GitHub Actions.
+- **L7.** CI en verde (run [`46101092930`](https://github.com/roldyoran/gpui-hola-mundo/actions/runs/46101092930),
+  8m20s): `fmt`, `clippy -D warnings`, 13 tests, `build --release` y artefacto
+  `pngtuber-lite-windows-x86_64` (4.711.535 B). El `.exe` descargado mide
+  11.699.200 B (11,2 MiB). Pendiente la prueba humana en OBS con WGC
+  (transparencia y ausencia de botón en la barra) y la medición de CPU/GPU/
+  arranque (OD-13).
