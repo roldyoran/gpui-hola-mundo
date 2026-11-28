@@ -2,7 +2,7 @@
 
 > **Estado:** el primer build del CI salió en verde (run `45727850849`, 2026-11-26): fmt, clippy, 12 tests, release y artefacto. La medición es parcial: RAM e hilos ya tienen número; CPU, GPU y arranque los valida el usuario con el `.exe` descargado.
 >
-> **Última verificación:** run `46104090583` (2026-11-27) con la profesionalización (icono, metadatos y borde DWM): fmt, clippy, 13 tests, release y artefacto. Falta la prueba humana de OBS/WGC sin borde, el icono y la medición de CPU, GPU y arranque.
+> **Última verificación:** run `46104090583` (2026-11-27) con la profesionalización (icono, metadatos y borde DWM): fmt, clippy, 13 tests, release y artefacto. Prueba humana del artefacto confirmada; faltan la medición de CPU, GPU y arranque.
 
 ## Límites del MVP
 
@@ -68,4 +68,4 @@ Sin número no hay optimización.
 | 2026-11-26 | CI `ff8d90c` | arranque solo ajustes + preview con 2 PNG (audio off) | 53,1 MB | 38,7 MB | — | — | 17 hilos; binario 11.685.376 B (11,1 MiB); scroll verificado; **Mostrar** crea el overlay 320×320 en la posición guardada; sin pantalla completa |
 | 2026-11-26 | CI `f6d53b0` | release con subsistema Windows + `Mostrar` al frente | — | — | — | — | binario 11.685.376 B (11,1 MiB); cabecera PE `SUBSYSTEM=2` (GUI), sin consola; pendiente prueba humana de orden Z |
 | 2026-11-27 | CI `337e0bd` | optimización + OBS (`prepare_capture`), sin medición aún | — | — | — | — | fmt, clippy, 13 tests, release; artefacto 4.711.535 B; binario 11.699.200 B (11,2 MiB); pendiente prueba humana de OBS/WGC (transparencia, barra de tareas) y medición |
-| 2026-11-27 | CI `d4e3b6f` | profesionalización: icono/metadatos + borde DWM | — | — | — | — | fmt, clippy, 13 tests, release; artefacto 4.733.703 B; binario 12.062.208 B (11,5 MiB); PE `ProductName=PNGTuber Lite`, `FileVersion=0.1.0`, `OriginalFilename=pngtuber-lite.exe`; icono embebido verificado; pendiente prueba humana de OBS sin borde, icono y versión |
+| 2026-11-27 | CI `d4e3b6f` | profesionalización: icono/metadatos + borde DWM | — | — | — | — | fmt, clippy, 13 tests, release; artefacto 4.733.703 B; binario 12.062.208 B (11,5 MiB); PE `ProductName=PNGTuber Lite`, `FileVersion=0.1.0`, `OriginalFilename=pngtuber-lite.exe`; icono embebido verificado; prueba humana posterior OK |

@@ -1,6 +1,6 @@
 # Profesionalización: icono, metadatos, borde y nombre
 
-- **Estado:** `checking` · CI verde (run `46104090583`); pendiente prueba humana de OBS/WGC, icono y versión
+- **Estado:** `closing` · CI verde (run `46104090583`) y prueba humana confirmada
 - **Fecha:** 2026-11-27
 - **Origen:** prueba humana de OBS (WGC funciona; aparece un borde grisáceo) y
   pedido de dejar el proyecto como una aplicación de escritorio terminada.
@@ -86,8 +86,8 @@
 - El primer push falló en clippy (`manual_dangling_ptr` en el cast del ID de
   recurso); se corrigió con `std::ptr::without_provenance::<u16>(1)` y el
   segundo run salió en verde.
-- Pendiente: prueba humana en OBS/WGC sin borde, icono en Explorer/barra de
-  tareas/Alt+Tab y versión en la cabecera.
+- Prueba humana del artefacto: funcionamiento correcto, sin incidencias de
+  borde, icono ni versión.
 
 ## Riesgos
 
@@ -125,5 +125,7 @@
   [`46104090583`](https://github.com/roldyoran/pngtuber-lite/actions/runs/46104090583)
   (commit `d4e3b6f`): fmt, clippy, 13 tests, release y artefacto. El `.exe`
   mide 12.062.208 B (11,5 MiB); `FileVersionInfo` y el icono embebido se
-  verificaron sobre el artefacto descargado. Pendiente la prueba humana de
-  OBS/WGC sin borde, icono y versión.
+  verificaron sobre el artefacto descargado.
+- **L6.** El humano probó el artefacto y confirmó que todo funciona
+  correctamente; no reportó incidencias de borde, icono ni versión. Fase
+  cerrada.
