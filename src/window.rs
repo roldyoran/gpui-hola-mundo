@@ -12,6 +12,11 @@ use crate::app::AppState;
 use crate::features::avatar::AvatarView;
 use crate::features::settings::{Settings, SettingsView};
 
+/// Título único del overlay, para que OBS lo distinga de ajustes.
+pub const AVATAR_TITLE: &str = "PNGTuber Lite · avatar";
+/// Título único de la ventana de ajustes.
+pub const SETTINGS_TITLE: &str = "PNGTuber Lite · ajustes";
+
 /// Bounds iniciales del avatar: los guardados o centrado en pantalla.
 pub fn avatar_bounds(settings: &Settings, cx: &mut App) -> Bounds<Pixels> {
     let window_size = size(px(settings.window.width), px(settings.window.height));
@@ -72,6 +77,7 @@ pub fn open_settings(state: Entity<AppState>, cx: &mut App) -> anyhow::Result<()
     // sistema pasan por aquí.
     let _ = handle.update(cx, |_, window, cx| {
         window.on_window_should_close(cx, |_, _| false);
+        window.set_window_title(SETTINGS_TITLE);
         crate::win32::disable_close(window);
     });
     state.update(cx, |state, _| state.settings_window = Some(handle));
@@ -121,6 +127,8 @@ pub fn show_avatar_overlay(state: &Entity<AppState>, cx: &mut App) {
         cx.notify();
     });
     let _ = handle.update(cx, |_, window, _| {
+        window.set_window_title(AVATAR_TITLE);
+        crate::win32::prepare_capture(window);
         crate::win32::set_topmost(window, topmost);
         crate::win32::remember_origin(window);
         crate::win32::raise(window);

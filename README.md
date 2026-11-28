@@ -70,6 +70,23 @@ a una copia de los PNG en `avatars\`.
 > **Ocultar**: la ventana se mueve fuera del escritorio pero sigue dibujando
 > frames.
 
+## Captura en OBS
+
+El overlay está pensado para `Captura de ventana` con transparencia real:
+
+1. En OBS, añade una fuente **Captura de ventana**.
+2. Como método elige **Windows 10 (1903 y posteriores)** (WGC). El método
+   automático usa BitBlt para esta clase de ventana y sale en negro.
+3. En ventana elige **PNGTuber Lite · avatar**. La ventana de ajustes aparece
+   como **PNGTuber Lite · ajustes**.
+4. Si la fuente ya existía de antes (cuando el título estaba vacío), **borra
+   la fuente y créala de nuevo**: la selección guardada apuntaba al título
+   viejo.
+
+Notas: el overlay no muestra botón en la barra de tareas, pero puede aparecer
+en Alt+Tab (limitación conocida de quitar `WS_EX_TOOLWINDOW`). Con **Ocultar**
+el avatar se aparca fuera de los monitores y OBS lo sigue capturando.
+
 ## Presupuesto
 
 El objetivo del proyecto es medido, no supuesto. Límites del MVP en
@@ -84,7 +101,7 @@ src/
 ├── main.rs          arranque: solo ajustes, sin overlay
 ├── app.rs           AppState + bomba de eventos de audio
 ├── window.rs        opciones, apertura de ajustes y overlay perezoso
-├── win32.rs         shim aislado: arrastre, redimensionado y siempre visible
+├── win32.rs         shim aislado: arrastre, redimensionado, siempre visible y captura para OBS
 ├── shared/ui.rs     tokens y controles propios
 └── features/
     ├── avatar/      carga, copia y decodificación de PNG

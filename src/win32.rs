@@ -63,12 +63,15 @@ mod imp {
     use gpui_kit::Window;
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
     use windows::Win32::Foundation::{HWND, POINT, RECT};
+    use windows::Win32::System::Com::{CLSCTX_INPROC_SERVER, CoCreateInstance};
     use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
+    use windows::Win32::UI::Shell::{ITaskbarList, TaskbarList};
     use windows::Win32::UI::WindowsAndMessaging::{
-        DeleteMenu, DrawMenuBar, GetCursorPos, GetSystemMenu, GetSystemMetrics, GetWindowRect,
-        HWND_NOTOPMOST, HWND_TOP, HWND_TOPMOST, MF_BYCOMMAND, SC_CLOSE, SM_CXVIRTUALSCREEN,
-        SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
-        SetWindowPos,
+        DeleteMenu, DrawMenuBar, GWL_EXSTYLE, GetCursorPos, GetSystemMenu, GetSystemMetrics,
+        GetWindowLongPtrW, GetWindowRect, HWND_NOTOPMOST, HWND_TOP, HWND_TOPMOST, MF_BYCOMMAND,
+        SC_CLOSE, SM_CXVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SWP_FRAMECHANGED,
+        SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SetWindowLongPtrW, SetWindowPos,
+        WS_EX_TOOLWINDOW,
     };
 
     use super::{DragStep, ResizeEdge};
@@ -423,6 +426,47 @@ mod imp {
         }
     }
 
+    /// Prepara el overlay para que OBS lo liste en Captura de ventana.
+    ///
+    /// Quita `WS_EX_TOOLWINDOW` (OBS filtra esas ventanas al poblar el
+    /// desplegable) y oculta el botón de la barra de tareas con
+    /// `ITaskbarList::DeleteTab`. No cambia el aspecto ni el orden Z: quien
+    /// llama reaplica `set_topmost` y `raise` después.
+    pub fn prepare_capture(window: &Window) {
+        let Some(hwnd) = hwnd(window) else {
+            return;
+        };
+        // SAFETY: `hwnd` pertenece a una ventana viva de este proceso;
+        // leer y reescribir el estilo extendido no retiene punteros.
+        unsafe {
+            let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+            let stripped = ex & !(WS_EX_TOOLWINDOW.0 as isize);
+            if stripped != ex {
+                SetWindowLongPtrW(hwnd, GWL_EXSTYLE, stripped);
+                let _ = SetWindowPos(
+                    hwnd,
+                    None,
+                    0,
+                    0,
+                    0,
+                    0,
+                    SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
+                );
+            }
+        }
+        // SAFETY: GPUI ya inicializó COM con `OleInitialize` en el hilo
+        // principal; `DeleteTab` solo oculta el botón de esta ventana. Si COM
+        // no está disponible se ignora y se acepta el botón en la barra.
+        unsafe {
+            let list: Result<ITaskbarList, _> =
+                CoCreateInstance(&TaskbarList, None, CLSCTX_INPROC_SERVER);
+            if let Ok(list) = list {
+                let _ = list.HrInit();
+                let _ = list.DeleteTab(hwnd);
+            }
+        }
+    }
+
     /// Guarda la posición visible inicial para poder aparcar y volver.
     pub fn remember_origin(window: &Window) {
         PARKED.store(false, Ordering::Relaxed);
@@ -455,8 +499,8 @@ mod imp {
 
 #[cfg(windows)]
 pub use imp::{
-    begin_drag, begin_resize, disable_close, drag_step, park, raise, remember_origin, resize_step,
-    set_topmost, show,
+    begin_drag, begin_resize, disable_close, drag_step, park, prepare_capture, raise,
+    remember_origin, resize_step, set_topmost, show,
 };
 
 #[cfg(not(windows))]
@@ -494,6 +538,9 @@ pub fn resize_step() -> Option<DragStep> {
 
 #[cfg(not(windows))]
 pub fn set_topmost(_window: &gpui_kit::Window, _always_on_top: bool) {}
+
+#[cfg(not(windows))]
+pub fn prepare_capture(_window: &gpui_kit::Window) {}
 
 #[cfg(not(windows))]
 pub fn remember_origin(_window: &gpui_kit::Window) {}
